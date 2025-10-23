@@ -1,0 +1,72 @@
+This is my paper about an MOO method used for machine unlearning.
+
+And right now I just entered the rebuttal stage. I will give you the rebuttal questions and opinions and also my ideas and extra experiments. And you should help me frame the response to each one of them and ask me questions to clarify if you need more info to write a proper answer.
+
+Official Review of Submission9664 by Reviewer mcr2
+Summary:
+This paper addresses the challenge of balancing unlearning efficacy and utility preservation in machine unlearning (MU). The authors formulate the Utility Preserving Unlearning Problem as a constrained optimization: maximize the decrease in the unlearning loss under a bounded increase in the retaining loss. Empirical evaluations on image classification and generation tasks demonstrate that EUPMU outperforms baselines.
+
+Strengths And Weaknesses:
+Strength:
+
+It is insightful that formulating MU as a constrained optimization problem with explicit control over utility loss.
+This paper provides detailed theoretical analysis and experimental evaluations that show consistent performance improvements.
+Weakness:
+
+Although it is very interesting to formulate MU as a gradient surgery problem, the gradient projection methods on MU have been investigated in the existing works [1][2]. I suggest that the authors add the corresponding discussions and comparison experiments.
+Some important methods are missed on the SD models, e.g., MACE [3] and UCE [4].
+The ablation experiments on the hyperparameters should also be added.
+Is it possible to implement EUPMU for multi-concept unlearning on the SD models?
+[1] Lin S, Zhang X, Susilo W, et al. GDR-GMA: Machine Unlearning via Direction-Rectified and Magnitude-Adjusted Gradients[C]//Proceedings of the 32nd ACM International Conference on Multimedia. 2024: 9087-9095.
+
+[2] Hoang T, Rana S, Gupta S, et al. Learn to unlearn for deep neural networks: Minimizing unlearning interference with gradient projection[C]//Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision. 2024: 4819-4828.
+
+[3] Lu S, Wang Z, Li L, et al. Mace: Mass concept erasure in diffusion models[C]//Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition. 2024: 6430-6440.
+
+[4] Gandikota R, Orgad H, Belinkov Y, et al. Unified concept editing in diffusion models[C]//Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision. 2024: 5111-5120.
+
+Quality: 3: good
+Clarity: 3: good
+Significance: 3: good
+Originality: 3: good
+Questions:
+Please see the weaknesses.4
+
+
+
+Official Review of Submission9664 by Reviewer 7Sf9
+Summary:
+Machine unlearning aims to remove the memory of specific data from the pre-trained model, and there is a trade-off between increasing the effectiveness of unlearning and maintaining the performance of the original model. One way to mitigate this is to employ a multi-objective optimization, but existing methods are inadequate for unlearning. To address this issue, the paper formulates a constrained optimization problem that aims to optimize the unlearning objective under the constraint of a bounded increase for utility loss and proposes an efficient method based on gradient surgery to solve this problem.
+
+Strengths And Weaknesses:
+Strengths
+This paper accurately provides why multi-objective optimization cannot be directly applied to the challenges of machine unlearning.
+Each proposition is thoroughly proven in the appendix.
+The paper presents comprehensive experimental results, and the image generation outcomes clearly illustrate the effectiveness of the proposed method.
+Weaknesses
+While existing unlearning studies [1, 2] are evaluated on datasets with diverse classes such as CIFAR-100, Tiny-ImageNet, and ImageNet-1k, the paper only conducts experiments on relatively simple datasets with 10 classes, such as CIFAR-10 and Imagenette. As a result, the evaluation appears insufficient to fully validate the generalizability and scalability of the proposed method.
+In Section 4.3, the definition of "pure linearization" is missing. There is no citation or clear description for "RL". Table 5 shows the proposed method takes more computation time than "pure linearization". If "pure linearization" refers to "linear weighting," then it raises concerns about the effectiveness of the proposed method, which claims to achieve comparable computational efficiency to "linear weighting".
+While it is understandable that the hyperparameter "error tolerance" 
+ influences empirical performance, there is no sensitivity analysis of the performance to 
+. This lack of analysis makes it difficult to assess the robustness of the proposed method.
+Table 6 shows that the proposed method incurs a significantly higher computational cost compared to GA in the random data forgetting scenario, while achieving only marginal performance gains. This raises questions about its cost-effectiveness.
+While existing methods [1, 2] evaluate unlearning performance by quantifying the gap between an unlearned model and a model retrained from scratch without data subject to unlearning, this paper evaluates performance using raw accuracy values. Given that the objective of unlearning is to obtain a model equivalent to one trained without using the data, it would be more appropriate to evaluate performance based on the gap from the retrained model trained only on the retained data.
+
+References
+
+[1] Fan et al., Salun: Empowering machine unlearning via gradient-based weight saliency in both image classification and generation, In Proc. ICLR, 2024.
+
+[2] Jia et al., model sparsity can simplify machine unlearning, In Proc. NeurIPS, 2023.
+
+Quality: 3: good
+Clarity: 2: fair
+Significance: 3: good
+Originality: 3: good
+Questions:
+Could you clarify the precise definition of "pure linearization" used in Table 5 and provide a citation or detailed explanation of "RL" in Section 4.3?
+How sensitive is the performance to the value of the error tolerance?
+Have you analyzed why the proposed method becomes less cost-effective specifically in the random forgetting scenario?
+Why is the evaluation process different from existing studies?
+
+Rating: 3: Borderline reject: Technically solid paper where reasons to reject, e.g., limited evaluation, outweigh reasons to accept, e.g., good evaluation. Please use sparingly.
+Confidence: 2: You are willing to defend your assessment, but it is quite likely that you did not understand the central parts of the submission or that you are unfamiliar with some pieces of related work. Math/other details were not carefully checked.

@@ -1,0 +1,1 @@
+python -u main_random.py --arch resnet18 --dataset cifar100 --mask pretrained_models/resnet18/cifar100/model_SA_best.pth.tar --save_dir output --gpu 0 --num_indexes_to_replace 22500 --unlearn RL --mtl --mtl_method eu_fast --unlearn_epochs 5 --unlearn_lr 0.002 --eu_w_lr 1 --eu_error 0.2

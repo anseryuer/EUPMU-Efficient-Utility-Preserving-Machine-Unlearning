@@ -1,0 +1,23 @@
+method: grid
+parameters:
+  weight_learning_rate_eu:
+    values: [0.0003, 0.001, 0.01, 0.03, 0.1, 0.3]
+  error_eu:
+    values: [0.1, 0.5, 0.01, 0.001, 0, -0.001,-0.01,-0.1, -0.5]
+command:
+  - python
+  - train.py
+  - --config
+  - cifar10_saliency_unlearn.yml
+  - --ckpt_folder
+  - results/cifar10/2024_06_12_135838
+  - --label_to_forget
+  - "0"
+  - --mode
+  - saliency_unlearn
+  - --mask_path
+  - results/cifar10/mask/0/with_0.5.pt
+  - --alpha
+  - "0.001"
+  - --method
+  - rl

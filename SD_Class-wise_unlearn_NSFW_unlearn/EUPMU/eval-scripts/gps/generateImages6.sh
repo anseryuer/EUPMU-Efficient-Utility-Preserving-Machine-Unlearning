@@ -1,0 +1,18 @@
+#!/bin/bash
+
+
+#Set job requirements
+#SBATCH -n 1
+#SBATCH -t 4:00:00
+#SBATCH -p gpu
+#SBATCH --gpus-per-node=1
+
+
+source activate ldm
+
+
+python eval-scripts/generate-images.py \
+        --prompts_path 'prompts/imagenette.csv' \
+        --save_path 'evaluation_folder/' \
+        --model_name "puregps_times100-compvis-cl-class_5-method_full-alpha_0.5-epoch_5-lr_1e-05" \
+        --device 'cuda:0'

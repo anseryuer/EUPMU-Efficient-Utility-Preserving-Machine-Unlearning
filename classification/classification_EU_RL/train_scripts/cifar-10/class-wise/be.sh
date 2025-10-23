@@ -1,0 +1,1 @@
+python -u main_forget.py         --arch resnet18         --dataset cifar10         --save_dir output         --mask pretrained_models/resnet18/cifar10/model_SA_best.pth.tar         --unlearn boundary_expanding         --class_to_replace 0         --unlearn_lr 1e-4         --unlearn_epochs 10

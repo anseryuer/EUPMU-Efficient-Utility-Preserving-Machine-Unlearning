@@ -1,0 +1,1 @@
+python -u main_random.py --arch resnet18 --dataset TinyImagenet --mask pretrained_models/resnet18/TinyImagenet/model_SA_best.pth.tar --save_dir output --gpu 0 --num_indexes_to_replace 30000 --unlearn RL --mtl --mtl_method eu --unlearn_epochs 5 --data "../data/tiny-imagenet-200" --unlearn_lr 0.007 --eu_w_lr 0.01  --eu_error 0.05 --weight_init 1
