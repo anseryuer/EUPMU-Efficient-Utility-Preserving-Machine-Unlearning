@@ -1,0 +1,44 @@
+
+prompts_file: "configs/van_gogh/prompt.yaml"
+
+pretrained_model:
+  name_or_path: "CompVis/stable-diffusion-v1-4"
+  v2: false
+  v_pred: false
+  clip_skip: 1
+
+network:
+  rank: 1
+  alpha: 1.0
+
+train:
+  precision: float32
+  noise_scheduler: "ddim"
+  iterations: 1000
+  batch_size: 1
+  lr: 0.0002
+  unet_lr: 0.0002
+  text_encoder_lr: 0.0001
+  optimizer_type: "AdamW8bit"
+  lr_scheduler: "constant"
+  lr_warmup_steps: 0
+  lr_scheduler_num_cycles: 0
+  max_denoising_steps: 30
+
+save:
+  name: "van_gogh"
+  path: "output/van_gogh"
+  per_steps: 1000
+  precision: float32
+
+logging:
+  use_wandb: true
+  interval: 0
+  seed: 0
+  generate_num: 1
+  run_name: "van_gogh"
+  verbose: false
+  prompts: ['van gogh', '']
+
+other:
+  use_xformers: true
