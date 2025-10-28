@@ -23,6 +23,9 @@ The file structure:
 - **EUPMU_ConAbl_with_multi_concept_erasing**: A modified version of the Concept Ablation code base adding EUPMU to boost the pareto front of the algorithm and also enabling multi concept erasing. Also *Note that this is just for demonstating the effect of combining EUPMU on other unlearning algorithm*
 - **EUPMU_style+instance_unlearn**: The final implementation of EUPMU in the paper for Stable Diffusion style and instance unlearning. Modified on the code of SPM. Having the best pareto front overall. 
 
+## Recommended Setup
+Except the SD_Class-wise_unlearn_NSFW_unlearn/ which is based on SalUn's SD unlearning code base, all other folders can be easily runned on a 24GB VRAM GPU. The SD_Class-wise_unlearn_NSFW_unlearn/ folder can be runned on 48GB VRAM but 32GB cards like RTX 5090 are not tested.
+
 ## Known Issues and TODOs
 - The EUPMU error and w_lr hyperparameter is not exactly the same thing as in the paper since we found that this way the code is just much simpler and better in practice. Overall the algorithm is the same as in the paper. More documentation will be added soon.
 - EUPMU not working well with MUON optimizer.
