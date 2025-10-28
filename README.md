@@ -1,5 +1,7 @@
 # Code base for Efficient Utility-Preserving Machine Unlearning with Implicit Gradient Surgery (EUPMU)
 
+Paper link: [https://arxiv.org/abs/2510.22124](https://arxiv.org/abs/2510.22124)
+
 The file structure:
 ```
 .
@@ -22,5 +24,6 @@ The file structure:
 - **EUPMU_style+instance_unlearn**: The final implementation of EUPMU in the paper for Stable Diffusion style and instance unlearning. Modified on the code of SPM. Having the best pareto front overall. 
 
 ## Known Issues and TODOs
+- The EUPMU error and w_lr hyperparameter is not exactly the same thing as in the paper since we found that this way the code is just much simpler and better in practice. Overall the algorithm is the same as in the paper. More documentation will be added soon.
 - EUPMU not working well with MUON optimizer.
 - EUPMU working fine with cosine scheduler but there could be issues when the lr is changing rapidly across a large range.
