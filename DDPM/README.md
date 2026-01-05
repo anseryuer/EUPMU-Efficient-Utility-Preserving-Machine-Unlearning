@@ -18,14 +18,14 @@ pip install -r requirements.txt
     python train.py --config cifar10_train.yml --mode train
    ```
 
-   Similar to the VAE, a checkpoint should be saved under `results/cifar10/yyyy_mm_dd_hhmmss`. 
+   A checkpoint should be saved under `results/cifar10/yyyy_mm_dd_hhmmss`. 
 
-2. Forgetting training with Saliency-Unlearning
+2. Forgetting training with EUPMU
 
    ```
    python train.py --config cifar10_eupmu.yml --ckpt_folder results/cifar10/yyyy_mm_dd_hhmmss --label_to_forget 0 --mode eupmu --alpha 0.001 --method rl
    ```
-   This should create another folder in `results/cifar10/unlearn/{method_name}`. 
+   This should create another folder `results/cifar10/yyyy_mm_dd_hhmmss`. 
 
    You can experiment with forgetting different class labels using the `--label_to_forget` flag, but we will consider forgetting the 0 (airplane) class here.
 
@@ -36,13 +36,13 @@ pip install -r requirements.txt
     ```
     python sample.py --config cifar10_sample.yml --ckpt_folder results/cifar10/yyyy_mm_dd_hhmmss --mode sample_fid --n_samples_per_class 5000 --classes_to_generate 'x0'
     ```
-    Samples will be saved in `results/cifar10/yyyy_mm_dd_hhmmss/fid_samples_without_label_0_guidance_2.0`. We can either use `--classes_to_generate '1,2,3,4,5,6,7,8,9'` or `--classes_to_generate 'x0'` to specify that we want to generate all classes but the 0 class (as we have forgotten it).
+    9 classes of 5000 samples each class will be saved in a folder named like `results/cifar10/yyyy_mm_dd_hhmmss/fid_samples_without_label_0_guidance_2.0`. We can either use `--classes_to_generate '1,2,3,4,5,6,7,8,9'` or `--classes_to_generate 'x0'` to specify that we want to generate all classes but the 0 class (as we have forgotten it).
 
-    Next, we need samples from the reference dataset, but without the 0 class.
+    Next, we need samples from the reference dataset, but without the 0 class. The following program is the same as the save_base_dataset.py in unlearning saliency and selective amnesia code base and select 500 real image each class.
     ```
     python save_base_dataset.py --dataset cifar10 --label_to_forget 0
     ```
-    The images should be saved in folder `./cifar10_without_label_0`.
+    The total of 4500 images should be saved in folder `./cifar10_without_label_0`.
 
     Now we can evaluate the image metrics
     ```
