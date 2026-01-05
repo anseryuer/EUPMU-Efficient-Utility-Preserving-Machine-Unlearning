@@ -17,10 +17,8 @@ try:
     weight_learning_rate_eu = wandb.config.weight_learning_rate_eu
     error_eu = wandb.config.error_eu
 except:
-    wandb.config.weight_learning_rate_eu = 0.025
-    wandb.config.error_eu = 0.0
-"""wandb.config.weight_learning_rate_eu = 0.025
-wandb.config.error_eu = 0.0"""
+    wandb.config.weight_learning_rate_eu = 5
+    wandb.config.error_eu = 3.0
 
 def parse_args_and_config():
     parser = argparse.ArgumentParser(description=globals()["__doc__"])
