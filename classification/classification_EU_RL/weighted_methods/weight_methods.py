@@ -593,7 +593,7 @@ class EU(WeightMethod):
     def get_weighted_loss(self, losses,**kwargs,):
         self.prev_ret_loss = losses[0]
         D = losses - self.min_losses + 1e-8
-        D_log = D#.log()
+        D_log = D.log()
         D_copy = D_log.clone()
         if self.w < 0:
             D_copy[0] = D_log[0] * 0
