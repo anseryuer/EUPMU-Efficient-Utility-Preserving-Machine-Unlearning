@@ -213,5 +213,5 @@ python -u main_random.py --unlearn RL_proximal --unlearn_epochs 10 --unlearn_lr 
 
 # Known Issues
 
-This branch: 
+This branch: classification-fixing-branch aims to fix this issue:
 The current implementation of MTL methods does not use optimizer.zero_grad() to clear gradients, which may lead to an accumulation of gradients over iterations. This could potentially affect the training dynamics and convergence of the model. Fixing this issue is on our to-do list for future updates. However, despite this limitation, the MTL methods have still demonstrated effective performance in our experiments and such minor bug does not affect the main results of our paper.
