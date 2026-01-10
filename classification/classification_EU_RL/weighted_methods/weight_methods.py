@@ -572,6 +572,9 @@ class EU(WeightMethod):
         super().__init__(2, device=device)
         self.min_losses = torch.zeros(2).to(device)
         self.w = torch.tensor([weight_init], device=device, requires_grad=True)
+        with torch.no_grad():
+            self.w.clamp_(min=0.0)
+
         try:
             w_lr = wandb.config.weight_learning_rate_eu
         except:
@@ -612,6 +615,9 @@ class EU(WeightMethod):
         #print(self.w.grad.size(), d.size())
         self.w.grad = d
         self.w_opt.step()
+        with torch.no_grad():
+            self.w.clamp_(min=0.0)
+
 
 class EU_fast(WeightMethod):
     """EU method with fast update mechanism, using the next step's result for update."""
@@ -630,6 +636,9 @@ class EU_fast(WeightMethod):
         super().__init__(2, device=device)
         self.min_losses = torch.zeros(2).to(device)
         self.w = torch.tensor([weight_init], device=device, requires_grad=True)
+        with torch.no_grad():
+            self.w.clamp_(min=0.0)
+
         try:
             w_lr = wandb.config.weight_learning_rate_eu
         except:
@@ -660,10 +669,13 @@ class EU_fast(WeightMethod):
             self.w_opt.zero_grad(set_to_none=True)
             self.w.grad = d
             self.w_opt.step()
+            with torch.no_grad():
+                self.w.clamp_(min=0.0)
+
 
         # Calculate the current weighted loss using the current `w` (from the previous step)
         D = losses - self.min_losses + 1e-8
-        D_log = D#.log()
+        D_log = D.log()
         D_copy = D_log.clone()
         
         current_w = self.w.detach().clone() # Use the weight before the update for this step's loss
