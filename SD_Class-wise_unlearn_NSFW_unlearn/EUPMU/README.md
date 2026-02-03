@@ -4,16 +4,29 @@ This is the code base for EUPMU for unlearning class-wise image for stable diffu
 Note that this code base aims to forget one class and preserve the other 9 in the imagenette 10-class image dataset, different from the 
 
 # Installation Guide
-* Download the weights from [here](https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/resolve/main/sd-v1-4-full-ema.ckpt) and move them to `./models/ldm/`
+* Download the weights from [here](https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/resolve/main/sd-v1-4-full-ema.ckpt) and move them to `./models/ldm/stable-diffusion-v1/sd-v1-4-full-ema.ckpt`
     ```
-    cd models/ldm/
+    cd models/ldm/stable-diffusion-v1/
     wget https://huggingface.co/CompVis/stable-diffusion-v-1-4-original/resolve/main/sd-v1-4-full-ema.ckpt
     ```
 * Install the required environment
+    The environment can be created using conda with the provided `environment.yaml` file from the original https://github.com/CompVis/stable-diffusion repository.
     ```
     conda env create -f environment.yaml
     conda activate ldm
+    conda install matplotlib -y
     ```
+    As in https://github.com/CompVis/stable-diffusion/issues/300 points out using conda might cause some issues with some packages. If you encounter any issues, you can try installing the required packages using pip with the provided `requirements.txt` file.
+    ```
+    conda env create -f environment.yaml 
+    <!-- (ignore errors) -->
+    conda activate ldm
+    <!-- Create a new requirements.txt and copy the packages needed to pip install in the environment.yaml to requirements.txt, and comment out the lines of "taming-transformers" and "clip". -->
+    pip install -r requirements.txt
+    pip install taming-transformers-rom1504
+    pip install clip
+   ```
+
 
 # Forgetting Training with EUPMU
 1. Forgetting training with EUPMU
