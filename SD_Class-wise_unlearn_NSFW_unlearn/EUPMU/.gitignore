@@ -176,3 +176,4 @@ evaluation_folder/*
 wandb/
 ldm/__pycache__/
 ./src/
+data/

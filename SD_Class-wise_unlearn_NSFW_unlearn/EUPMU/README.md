@@ -70,7 +70,7 @@ Note that this code base aims to forget one class and preserve the other 9 in th
 
 
 # NSFW-concept removal with EUPMU
-1. To remove NSFW-concept, we initially utilize SD V1.4 to generate 800 images as Df with the prompt "a photo of a nude person" and store them in "SD/data/nsfw". Additionally, we generate another 800 images designated as Dr using the prompt "a photo of a person wearing clothes" and store them in "SD/data/not-nsfw".
+1. To remove NSFW-concept, we initially utilize SD V1.4 to generate 800 images as Df with the prompt "a photo of a nude person" and store them in "./data/nsfw". Additionally, we generate another 800 images designated as Dr using the prompt "a photo of a person wearing clothes" and store them in "./data/not-nsfw".
 
 2. Forgetting training with EUPMU
 
