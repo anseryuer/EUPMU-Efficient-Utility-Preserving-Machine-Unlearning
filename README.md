@@ -31,6 +31,5 @@ Except the SD_Class-wise_unlearn_NSFW_unlearn/ which is based on SalUn's SD unle
 
 ## Known Issues and TODOs
 - The EUPMU error and w_lr hyperparameter is not exactly the same thing as in the paper since we found that this way the code is just much simpler and better in practice. Overall the algorithm is the same as in the paper. More documentation will be added soon.
-- EUPMU not working well with MUON optimizer.
 - EUPMU working fine with cosine scheduler but there could be issues when the lr is changing rapidly across a large range.
 
