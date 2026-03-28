@@ -91,6 +91,7 @@ def RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, device
                 output_clean = model(image)
 
             if args.mtl:
+                optimizer.zero_grad()
                 retain_indexes = [index for index, value in enumerate(target_label) if value == "retain"]
                 forget_indexes = [index for index, value in enumerate(target_label) if value == "forget"]
                 loss_retain = criterion(output_clean[retain_indexes], target[retain_indexes])*(len(retain_indexes)/len(target_label))
@@ -125,10 +126,12 @@ def RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, device
                 if ("eu" == args.mtl_method):
                     with torch.no_grad():
                         output_clean_ = model(image)
-                        loss_retain = criterion(output_clean_[retain_indexes], target[retain_indexes]) * (
+                        loss_retain2 = criterion(output_clean_[retain_indexes], target[retain_indexes]) * (
                                     len(retain_indexes) / len(target_label))
-                        weight_method.method.update(loss_retain.detach())
-                        # wandb.log({"EU_weight": weight_method.method.w})
+                        weight_method.method.update(loss_retain2.detach())
+                        wandb.log({"EU_weight": weight_method.method.w})
+                        wandb.log({"retain_loss": loss_retain})
+                        wandb.log({"forget_loss": loss_forget})
 
 
             elif args.retainwithAllParamUpdate:
