@@ -38,25 +38,19 @@ We would like to clarify a subtle but important detail regarding the implementat
 In the paper, the update of the dual variable is derived from the constrained optimization formulation:
 
 $$
-\tilde{\delta}_t
-=
-\frac{1}{\alpha_t}
-\bigl(\ell_r(\theta_t) - \ell_r(\theta_{t+1})\bigr)
-+ \epsilon_t,
+\tilde{\delta}_t = \frac{1}{\alpha_t} \bigl(\ell_r(\theta_t) - \ell_r(\theta_{t+1})\bigr) + \epsilon_t,
 $$
 
 and
 
 $$
-\lambda_{t+1}
-=
-\lambda_t - \beta_t \tilde{\delta}_t.
+\lambda_{t+1} = \lambda_t - \beta_t \tilde{\delta}_t.
 $$
 
 Here, $\epsilon_t \ge 0$ represents a tolerance for utility degradation:  
 we allow small increases in retaining loss without immediately increasing $\lambda_t$.
 
----
+
 
 ### Practical Implementation (Code)
 
@@ -66,22 +60,17 @@ In the released code, we use the following form:
 delta = (prev_loss.log() - curr_loss.log()) - self.error
 ````
 
-and update the weight $w$ (i.e., $\lambda$) using Adam.
+and update the weight $w$ (i.e., $\lambda$ ) using Adam.
 
 This can be written as:
 
 $$
-\tilde{\delta}_t^{\text{impl}}
-==============================
-
-\bigl(\log \ell_r(\theta_t) - \log \ell_r(\theta_{t+1})\bigr)
-
-* \epsilon,
-  $$
+\tilde{\delta}_t^{\text{impl}} = \bigl(\log \ell_r(\theta_t) - \log \ell_r(\theta_{t+1})\bigr) - \epsilon,
+$$
 
 where `self.error` corresponds to $\epsilon$.
 
----
+
 
 ### Why the Form Looks Different (but is Equivalent)
 
@@ -101,15 +90,9 @@ Thus, the log-difference is simply a **scaled version of the original improvemen
 
 #### (b) Sign and subtraction of $\epsilon$
 
-In the paper:
-$$
-\tilde{\delta}_t = (\text{improvement}) + \epsilon_t
-$$
+In the paper: $ \tilde{\delta}_t = (\text{improvement}) + \epsilon_t $
 
-In implementation:
-$$
-\tilde{\delta}_t^{\text{impl}} = (\text{improvement}) - \epsilon
-$$
+In implementation: $ \tilde{\delta}_t^{\text{impl}} = (\text{improvement}) - \epsilon $
 
 This difference comes from **where the threshold is applied**.
 
@@ -128,7 +111,7 @@ Equivalently:
 Therefore, `self.error` in code plays the same role as $\epsilon_t$ in the paper:
 it controls the **tolerance of utility degradation**.
 
----
+
 
 ### Why Use Log Loss + Adam?
 
@@ -164,7 +147,7 @@ This provides:
 * Automatic step-size adaptation
 * Better empirical stability (especially in diffusion models)
 
----
+
 
 ### Key Takeaway
 
@@ -177,7 +160,7 @@ The implementation and the theory are **fully aligned at the conceptual level**:
 The differences (log transform, subtraction form, Adam update) are **practical enhancements**,
 mainly inspired by FAMO-style adaptive weighting, to improve stability and performance in real training.
 
----
+
 
 If you are reproducing results, we recommend treating:
 
@@ -186,7 +169,6 @@ If you are reproducing results, we recommend treating:
 
 rather than expecting a strict one-to-one numerical match with Eq. (8).
 
-```
 
 ## Known Issues and TODOs
 - The EUPMU error and w_lr hyperparameter is not exactly the same thing as in the paper since we found that this way the code is just much simpler and better in practice. Overall the algorithm is the same as in the paper. More documentation will be added soon.
