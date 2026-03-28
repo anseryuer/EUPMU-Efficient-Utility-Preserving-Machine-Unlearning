@@ -90,9 +90,9 @@ Thus, the log-difference is simply a **scaled version of the original improvemen
 
 #### (b) Sign and subtraction of $\epsilon$
 
-In the paper: $ \tilde{\delta}_t = (\text{improvement}) + \epsilon_t $
+In the paper: $\tilde{\delta}_t = (\text{improvement}) + \epsilon_t$
 
-In implementation: $ \tilde{\delta}_t^{\text{impl}} = (\text{improvement}) - \epsilon $
+In implementation: $\tilde{\delta}_t^{\text{impl}} = (\text{improvement}) - \epsilon$
 
 This difference comes from **where the threshold is applied**.
 
@@ -131,8 +131,9 @@ Specifically, we adopt two choices from this line of work:
 #### (b) Adam optimizer for $\lambda$
 
 Instead of directly applying:
+
 $$
-\lambda_{t+1} = \lambda_t - \beta_t \tilde{\delta}_t,
+\lambda_{t+1} = \lambda_t - \beta_t \tilde{\delta}_t
 $$
 
 we treat $\lambda$ (or $w$) as a learnable scalar and update it with Adam:
