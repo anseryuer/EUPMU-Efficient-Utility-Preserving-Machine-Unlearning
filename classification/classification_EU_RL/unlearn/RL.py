@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import utils
 
-from .impl import iterative_unlearn
+from .impl import iterative_unlearn, update_omd_tch_average, update_ada_omd_marked_state
 import wandb
 import random
 from torch.utils.data import Dataset, Subset
@@ -96,6 +96,25 @@ def RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, device
                 loss_retain = criterion(output_clean[retain_indexes], target[retain_indexes])*(len(retain_indexes)/len(target_label))
                 loss_forget = criterion(output_clean[forget_indexes], target[forget_indexes])*(len(forget_indexes)/len(target_label))
 
+                shared_parameters = [param for param in model.parameters() if param.requires_grad]
+                if hasattr(weight_method.method, "set_task_gradients"):
+                    task_grads = []
+                    for task_loss in (loss_retain, loss_forget):
+                        grads = torch.autograd.grad(
+                            task_loss,
+                            shared_parameters,
+                            retain_graph=True,
+                            allow_unused=True,
+                        )
+                        flat_grads = []
+                        for param, grad in zip(shared_parameters, grads):
+                            if grad is None:
+                                flat_grads.append(torch.zeros_like(param).reshape(-1))
+                            else:
+                                flat_grads.append(grad.detach().reshape(-1))
+                        task_grads.append(torch.cat(flat_grads))
+                    weight_method.method.set_task_gradients(torch.stack(task_grads, dim=0))
+
                 loss, extra_outputs = weight_method.backward(
                     losses=torch.stack([loss_retain, loss_forget]),
                     shared_parameters=list(model.parameters()),
@@ -106,6 +125,10 @@ def RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, device
                         if param.grad is not None:
                             param.grad *= mask[name]
 
+                update_ada_omd_marked_state(args, model, [loss_retain.detach(), loss_forget.detach()])
+                # The OMD-TCH paper averages optimization iterates over rounds; we therefore
+                # snapshot the current iterate before each optimizer step.
+                update_omd_tch_average(args, model)
                 optimizer.step()
 
                 if ("famo" in args.mtl_method):

@@ -19,6 +19,23 @@ from weighted_methods.weight_methods import WeightMethods
 from trainer import validate
 
 
+def evaluate_model_state(model, state_dict, unlearn_data_loaders, criterion, args, device):
+    original_state = {name: tensor.detach().clone() for name, tensor in model.state_dict().items()}
+    model.load_state_dict(state_dict, strict=False)
+
+    accuracy = {}
+    for name, loader in unlearn_data_loaders.items():
+        utils.dataset_convert_to_test(loader.dataset, args)
+        val_acc = validate(loader, model, criterion, args, name, device)
+        if name == "forget":
+            accuracy[name] = round(100 - val_acc, 2)
+        else:
+            accuracy[name] = round(val_acc, 2)
+
+    model.load_state_dict(original_state, strict=False)
+    return accuracy
+
+
 def main(args):
 
     if torch.cuda.is_available():
@@ -128,11 +145,17 @@ def main(args):
     print(f"number of forget dataset {len(forget_dataset)}")
 
     forget_ratio = len(forget_dataset) / (len(retain_dataset) + len(forget_dataset))
-    args.save_dir = os.path.join(args.save_dir,
-                                 args.arch,
-                                 args.dataset,
-                                 "forget_" + str(round(forget_ratio * 100, 2)) + "%", args.unlearn,
-                                 f"{args.wandb_entity}")
+    save_components = [
+        args.save_dir,
+        args.arch,
+        args.dataset,
+        "forget_" + str(round(forget_ratio * 100, 2)) + "%",
+        args.unlearn,
+    ]
+    if args.mtl and args.mtl_method is not None:
+        save_components.append(args.mtl_method)
+    save_components.append(f"{args.wandb_entity}")
+    args.save_dir = os.path.join(*save_components)
 
     if args.path!=None:
         map_ratio=os.path.basename(args.path)
@@ -198,6 +221,28 @@ def main(args):
             print(f"{name} acc: {val_acc}")
 
         evaluation_result["accuracy"] = accuracy
+
+        if args.mtl and getattr(args, "mtl_method", None) in {"omd_tch", "omd_tch_eg", "omd_tch_pgd", "afleg", "afl"} and getattr(args, "omd_tch_avg_state", None) is not None:
+            avg_accuracy = evaluate_model_state(
+                model,
+                args.omd_tch_avg_state,
+                unlearn_data_loaders,
+                criterion,
+                args,
+                device,
+            )
+            evaluation_result["avg_accuracy"] = avg_accuracy
+
+        if args.mtl and getattr(args, "mtl_method", None) in {"ada_omd_tch_eg", "ada_afleg"} and getattr(args, "ada_omd_result_state", None) is not None:
+            adaptive_accuracy = evaluate_model_state(
+                model,
+                args.ada_omd_result_state,
+                unlearn_data_loaders,
+                criterion,
+                args,
+                device,
+            )
+            evaluation_result["adaptive_accuracy"] = adaptive_accuracy
 
         unlearn.save_unlearn_checkpoint(model, evaluation_result, args)
 

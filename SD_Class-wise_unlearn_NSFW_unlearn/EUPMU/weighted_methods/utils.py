@@ -121,4 +121,23 @@ def extract_weight_method_parameters_from_args(args):
             cagrad=dict(c=0.4, max_norm=1),
         )
     )
+    weight_methods_parameters["chebyshev"]["task_weights"] = [
+        args.cheby_retain_weight,
+        args.cheby_forget_weight,
+    ]
+    weight_methods_parameters["chebyshev"]["reference_point"] = [
+        args.cheby_retain_ref,
+        args.cheby_forget_ref,
+    ]
+    weight_methods_parameters["chebyshev"]["rho"] = args.cheby_rho
+
+    omd_params = {
+        "task_weights": [args.omd_tch_retain_weight, args.omd_tch_forget_weight],
+        "reference_point": [args.omd_tch_retain_ref, args.omd_tch_forget_ref],
+        "eta": args.omd_tch_eta,
+        "rho": args.omd_tch_rho,
+    }
+    for name in ["omd_tch", "omd_tch_eg", "omd_tch_pgd", "afleg", "afl"]:
+        weight_methods_parameters[name].update(omd_params)
+
     return weight_methods_parameters

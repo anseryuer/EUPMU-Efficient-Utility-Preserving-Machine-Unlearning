@@ -125,4 +125,23 @@ def extract_weight_method_parameters_from_args(args):
     if hasattr(args, "weight_init"):
         method_parameters["eu"]["weight_init"] = args.weight_init
 
+    method_parameters["chebyshev"]["task_weights"] = [
+        args.cheby_retain_weight,
+        args.cheby_forget_weight,
+    ]
+    method_parameters["chebyshev"]["reference_point"] = [
+        args.cheby_retain_ref,
+        args.cheby_forget_ref,
+    ]
+    method_parameters["chebyshev"]["rho"] = args.cheby_rho
+
+    omd_params = {
+        "task_weights": [args.omd_tch_retain_weight, args.omd_tch_forget_weight],
+        "reference_point": [args.omd_tch_retain_ref, args.omd_tch_forget_ref],
+        "eta": args.omd_tch_eta,
+        "rho": args.omd_tch_rho,
+    }
+    for name in ["omd_tch", "omd_tch_eg", "omd_tch_pgd", "ada_omd_tch_eg", "ada_afleg", "afleg", "afl"]:
+        method_parameters[name].update(omd_params)
+
     return method_parameters

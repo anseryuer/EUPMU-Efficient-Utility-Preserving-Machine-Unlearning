@@ -13,3 +13,11 @@ SD_style+instance_unlearn/EUPMU_style+instance_unlearn/generated_images/
 *.zip
 
 wandb/
+
+*.pdf
+*.png
+*.tex
+.vscode/
+
+SD_Class-wise_unlearn_NSFW_unlearn/EUPMU/run_table1_sd.sh
+SD_Class-wise_unlearn_NSFW_unlearn/EUPMU/src/

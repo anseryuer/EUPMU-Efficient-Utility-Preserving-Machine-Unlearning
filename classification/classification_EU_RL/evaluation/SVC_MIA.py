@@ -1,8 +1,16 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from imagenet import get_x_y_from_data_dict
 from sklearn.svm import SVC
+
+
+def get_x_y_from_data_dict(data, device):
+    x, y = data.values()
+    if isinstance(x, list):
+        x, y = x[0].to(device), y[0].to(device)
+    else:
+        x, y = x.to(device), y.to(device)
+    return x, y
 
 
 def entropy(p, dim=-1, keepdim=False):
@@ -35,7 +43,7 @@ def collect_prob(data_loader, model, device):
             try:
                 batch = [tensor.to(next(model.parameters()).device) for tensor in batch]
                 data, target = batch
-            except:
+            except Exception:
                 data, target = get_x_y_from_data_dict(batch, device)
             with torch.no_grad():
                 output = model(data)
@@ -134,11 +142,11 @@ def SVC_MIA(shadow_train, target_train, target_test, shadow_test, model, device)
         shadow_train_prob, shadow_test_prob, target_train_prob, target_test_prob
     )
     m = {
-        "correctness": round(acc_corr*100,2),
-        "confidence": round(acc_conf*100,2),
-        "entropy": round(acc_entr*100,2),
-        "m_entropy": round(acc_m_entr*100,2),
-        "prob": round(acc_prob*100,2),
+        "correctness": round(acc_corr * 100, 2),
+        "confidence": round(acc_conf * 100, 2),
+        "entropy": round(acc_entr * 100, 2),
+        "m_entropy": round(acc_m_entr * 100, 2),
+        "prob": round(acc_prob * 100, 2),
     }
     print(m)
     return m

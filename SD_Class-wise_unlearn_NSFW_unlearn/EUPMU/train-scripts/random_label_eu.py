@@ -5,9 +5,7 @@ from time import sleep
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from convertModels import savemodelDiffusers
 from dataset import setup_forget_data, setup_model, setup_remain_data
-from diffusers import LMSDiscreteScheduler
 from tqdm import tqdm
 from weighted_methods.utils import extract_weight_method_parameters_from_args
 from weighted_methods.weight_methods import WeightMethods
@@ -46,12 +44,6 @@ def certain_label(
     # MODEL TRAINING SETUP
     model = setup_model(config_path, ckpt_path, device)
     criteria = torch.nn.MSELoss()
-    scheduler = LMSDiscreteScheduler(
-        beta_start=0.00085,
-        beta_end=0.012,
-        beta_schedule="scaled_linear",
-        num_train_timesteps=1000,
-    )
 
     remain_dl, descriptions = setup_remain_data(class_to_forget, batch_size, image_size)
     forget_dl, _ = setup_forget_data(class_to_forget, batch_size, image_size)
@@ -81,11 +73,14 @@ def certain_label(
     else:
         name = f"compvis-cl-class_{str(class_to_forget)}-method_{train_method}-alpha_{alpha}-epoch_{epochs}-lr_{lr}-random_{random.randint(0, 1000)}"
     if args.mtl:
-        assert args.mtl_method == "eu" # Only implemented for efficient unlearning
-        # weight method
         weight_methods_parameters = extract_weight_method_parameters_from_args(args)
-        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = weight_learning_rate_eu,error = error_eu)
-        name += f"-mtl_{args.mtl_method}-w_lr_{weight_learning_rate_eu}-err_{error_eu}"
+        method_kwargs = dict(weight_methods_parameters[args.mtl_method])
+        if args.mtl_method == "eu":
+            method_kwargs.update(dict(w_lr=weight_learning_rate_eu, error=error_eu))
+            name += f"-mtl_{args.mtl_method}-w_lr_{weight_learning_rate_eu}-err_{error_eu}"
+        else:
+            name += f"-mtl_{args.mtl_method}"
+        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, **method_kwargs)
     # TRAINING CODE
     for epoch in range(epochs):
         with tqdm(total=len(forget_dl)) as time:
@@ -247,9 +242,14 @@ def save_model(
 
     if save_diffusers:
         print("Saving Model in Diffusers Format")
-        savemodelDiffusers(
-            name, compvis_config_file, diffusers_config_file, device=device
-        )
+        try:
+            from convertModels import savemodelDiffusers
+        except Exception as exc:
+            print(f"Skipping diffusers conversion because convertModels could not be imported: {exc}")
+        else:
+            savemodelDiffusers(
+                name, compvis_config_file, diffusers_config_file, device=device
+            )
 
 
 def save_history(losses, name, word_print):
@@ -349,6 +349,17 @@ if __name__ == "__main__":
     )
     parser.add_argument("--mtl", action="store_true", default=False, help="")
     parser.add_argument("--mtl_method", type=str, default=None, help="")
+    parser.add_argument("--cheby_retain_weight", default=1.0, type=float, help="Chebyshev weight for the retain loss")
+    parser.add_argument("--cheby_forget_weight", default=1.0, type=float, help="Chebyshev weight for the forget loss")
+    parser.add_argument("--cheby_retain_ref", default=0.0, type=float, help="Chebyshev reference value for the retain loss")
+    parser.add_argument("--cheby_forget_ref", default=0.0, type=float, help="Chebyshev reference value for the forget loss")
+    parser.add_argument("--cheby_rho", default=1e-3, type=float, help="Augmentation coefficient for Chebyshev scalarization")
+    parser.add_argument("--omd_tch_retain_weight", default=1.0, type=float, help="OMD-TCH weight for the retain loss")
+    parser.add_argument("--omd_tch_forget_weight", default=1.0, type=float, help="OMD-TCH weight for the forget loss")
+    parser.add_argument("--omd_tch_retain_ref", default=0.0, type=float, help="OMD-TCH reference value for the retain loss")
+    parser.add_argument("--omd_tch_forget_ref", default=0.0, type=float, help="OMD-TCH reference value for the forget loss")
+    parser.add_argument("--omd_tch_eta", default=0.1, type=float, help="Mirror descent step size for OMD-TCH")
+    parser.add_argument("--omd_tch_rho", default=0.0, type=float, help="Optional augmentation coefficient for OMD-TCH; paper-consistent default is 0.0")
     args = parser.parse_args()
 
     # classes = [int(d) for d in args.classes.split(',')]

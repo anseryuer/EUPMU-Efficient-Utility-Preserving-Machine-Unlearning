@@ -5,12 +5,10 @@ from time import sleep
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from convertModels import savemodelDiffusers
 from dataset import (
     setup_forget_nsfw_data,
     setup_model,
 )
-from diffusers import LMSDiscreteScheduler
 from ldm.models.diffusion.ddim import DDIMSampler
 from tqdm import tqdm
 from weighted_methods.utils import extract_weight_method_parameters_from_args
@@ -65,12 +63,6 @@ def nsfw_removal(
     # MODEL TRAINING SETUP
     model = setup_model(config_path, ckpt_path, device)
     sampler = DDIMSampler(model)
-    scheduler = LMSDiscreteScheduler(
-        beta_start=0.00085,
-        beta_end=0.012,
-        beta_schedule="scaled_linear",
-        num_train_timesteps=1000,
-    )
     criteria = torch.nn.MSELoss()
     forget_dl, remain_dl = setup_forget_nsfw_data(batch_size, image_size)
 
@@ -78,10 +70,11 @@ def nsfw_removal(
     parameters = []
 
     if args.mtl:
-        assert args.mtl_method == "eu" # Only implemented for efficient unlearning
-        # weight method
-        #weight_methods_parameters = extract_weight_method_parameters_from_args(args)
-        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = weight_learning_rate_eu,error = error_eu)
+        weight_methods_parameters = extract_weight_method_parameters_from_args(args)
+        method_kwargs = dict(weight_methods_parameters[args.mtl_method])
+        if args.mtl_method == "eu":
+            method_kwargs.update(dict(w_lr=weight_learning_rate_eu, error=error_eu))
+        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, **method_kwargs)
  
     for name, param in model.model.diffusion_model.named_parameters():
         # train only x attention layers
@@ -106,10 +99,11 @@ def nsfw_removal(
     else:
         name = f"compvis-nsfw-method_{train_method}-lr_{lr}"
     if args.mtl:
-        assert args.mtl_method == "eu" # Only implemented for efficient unlearning
-        # weight method
         weight_methods_parameters = extract_weight_method_parameters_from_args(args)
-        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = weight_learning_rate_eu,error = error_eu)
+        method_kwargs = dict(weight_methods_parameters[args.mtl_method])
+        if args.mtl_method == "eu":
+            method_kwargs.update(dict(w_lr=weight_learning_rate_eu, error=error_eu))
+        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, **method_kwargs)
 
     # NSFW Removal
     word_nude = "a photo of a nude person"
@@ -251,9 +245,14 @@ def save_model(
 
     if save_diffusers:
         print("Saving Model in Diffusers Format")
-        savemodelDiffusers(
-            name, compvis_config_file, diffusers_config_file, device=device
-        )
+        try:
+            from convertModels import savemodelDiffusers
+        except Exception as exc:
+            print(f"Skipping diffusers conversion because convertModels could not be imported: {exc}")
+        else:
+            savemodelDiffusers(
+                name, compvis_config_file, diffusers_config_file, device=device
+            )
 
 
 def save_history(losses, name, word_print):
@@ -348,6 +347,17 @@ if __name__ == "__main__":
     )
     parser.add_argument("--mtl", action="store_true", default=False, help="")
     parser.add_argument("--mtl_method", type=str, default=None, help="")
+    parser.add_argument("--cheby_retain_weight", default=1.0, type=float, help="Chebyshev weight for the retain loss")
+    parser.add_argument("--cheby_forget_weight", default=1.0, type=float, help="Chebyshev weight for the forget loss")
+    parser.add_argument("--cheby_retain_ref", default=0.0, type=float, help="Chebyshev reference value for the retain loss")
+    parser.add_argument("--cheby_forget_ref", default=0.0, type=float, help="Chebyshev reference value for the forget loss")
+    parser.add_argument("--cheby_rho", default=1e-3, type=float, help="Augmentation coefficient for Chebyshev scalarization")
+    parser.add_argument("--omd_tch_retain_weight", default=1.0, type=float, help="OMD-TCH weight for the retain loss")
+    parser.add_argument("--omd_tch_forget_weight", default=1.0, type=float, help="OMD-TCH weight for the forget loss")
+    parser.add_argument("--omd_tch_retain_ref", default=0.0, type=float, help="OMD-TCH reference value for the retain loss")
+    parser.add_argument("--omd_tch_forget_ref", default=0.0, type=float, help="OMD-TCH reference value for the forget loss")
+    parser.add_argument("--omd_tch_eta", default=0.1, type=float, help="Mirror descent step size for OMD-TCH")
+    parser.add_argument("--omd_tch_rho", default=0.0, type=float, help="Optional augmentation coefficient for OMD-TCH; paper-consistent default is 0.0")
 
     args = parser.parse_args()
 

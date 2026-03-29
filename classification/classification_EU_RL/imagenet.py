@@ -3,12 +3,17 @@ import sys
 
 import torch
 import torchvision
-from datasets.load import load_dataset
 from torch.utils.data import DataLoader, Subset
 
 # sys.path.append(".")
 # from cfg import *
 from tqdm import tqdm
+
+
+def _load_hf_dataset(*args, **kwargs):
+    from datasets.load import load_dataset
+
+    return load_dataset(*args, **kwargs)
 
 
 def prepare_data(
@@ -22,10 +27,10 @@ def prepare_data(
     data_path = os.path.abspath(data_path)
     path = os.path.join(data_path, "huggingface")
     if dataset == "imagenet":
-        train_set = load_dataset(
+        train_set = _load_hf_dataset(
             "imagenet-1k", use_auth_token=True, split="train", cache_dir=path
         )
-        validation_set = load_dataset(
+        validation_set = _load_hf_dataset(
             "imagenet-1k", use_auth_token=True, split="validation", cache_dir=path
         )
 
@@ -54,10 +59,10 @@ def prepare_data(
             return examples
 
     elif dataset == "tiny_imagenet":
-        train_set = load_dataset(
+        train_set = _load_hf_dataset(
             "Maysee/tiny-imagenet", use_auth_token=True, split="train", cache_dir=path
         )
-        validation_set = load_dataset(
+        validation_set = _load_hf_dataset(
             "Maysee/tiny-imagenet", use_auth_token=True, split="valid", cache_dir=path
         )
 
@@ -90,10 +95,10 @@ def prepare_data(
             return examples
 
     elif dataset == "flowers102":
-        train_set = load_dataset(
+        train_set = _load_hf_dataset(
             "nelorth/oxford-flowers", use_auth_token=True, split="train", cache_dir=path
         )
-        validation_set = load_dataset(
+        validation_set = _load_hf_dataset(
             "nelorth/oxford-flowers", use_auth_token=True, split="test", cache_dir=path
         )
 
