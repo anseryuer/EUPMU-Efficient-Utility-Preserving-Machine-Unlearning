@@ -65,12 +65,17 @@ def certain_label(
 
     # TRAINING CODE
     for epoch in range(epochs):
+        remain_iter = iter(remain_dl)
         with tqdm(total=len(forget_dl)) as time:
             for i, (images, labels) in enumerate(forget_dl):
                 optimizer.zero_grad()
 
-                forget_images, forget_labels = next(iter(forget_dl))
-                remain_images, remain_labels = next(iter(remain_dl))
+                forget_images, forget_labels = images, labels
+                try:
+                    remain_images, remain_labels = next(remain_iter)
+                except StopIteration:
+                    remain_iter = iter(remain_dl)
+                    remain_images, remain_labels = next(remain_iter)
 
                 #import pdb
                 #pdb.set_trace()

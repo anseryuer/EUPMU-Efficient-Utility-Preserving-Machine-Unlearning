@@ -1,7 +1,10 @@
 import argparse
+from pathlib import Path
+
 import torch
 from dataset import setup_fid_data_per_class
 from torchmetrics.image.fid import FID
+
 
 def compute_fid_per_class(class_to_forget, path, image_size):
     # FID instance
@@ -35,7 +38,9 @@ def compute_fid_per_class(class_to_forget, path, image_size):
 
         # Reset the FID for the next class
         fid.reset()
-    print(f"Average FID Score = {avg_fid / 9}")
+    average_fid = avg_fid / 9
+    print(f"Average FID Score = {average_fid}")
+    return average_fid
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -52,10 +57,21 @@ if __name__ == "__main__":
         required=False,
         default=512,
     )
+    parser.add_argument(
+        "--save_path",
+        help="optional path to save the final average FID as plain text",
+        type=str,
+        required=False,
+        default=None,
+    )
     args = parser.parse_args()
 
     path = args.folder_path
     class_to_forget = args.class_to_forget
     image_size = args.image_size
     print("class_to_forget:", class_to_forget)
-    compute_fid_per_class(class_to_forget, path, image_size)
+    average_fid = compute_fid_per_class(class_to_forget, path, image_size)
+    if args.save_path is not None:
+        save_path = Path(args.save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path.write_text(f"{float(average_fid):.10f}\n")

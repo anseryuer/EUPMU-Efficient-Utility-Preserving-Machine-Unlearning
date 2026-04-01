@@ -14,8 +14,29 @@ from tqdm import tqdm
 from weighted_methods.utils import extract_weight_method_parameters_from_args
 from weighted_methods.weight_methods import WeightMethods
 
+from types import SimpleNamespace
 
-import wandb
+try:
+    import wandb as _wandb
+except Exception:
+    _wandb = None
+
+
+class _WandbStub:
+    def __init__(self):
+        self.config = SimpleNamespace()
+
+    def init(self, *args, **kwargs):
+        return None
+
+    def log(self, *args, **kwargs):
+        return None
+
+    def finish(self, *args, **kwargs):
+        return None
+
+
+wandb = _wandb if _wandb is not None and hasattr(_wandb, "init") else _WandbStub()
 wandb.init(project="SD_NSFW_unlearning")
 try:
     # Retrieve hyperparameters from the sweep configuration
@@ -27,6 +48,54 @@ except:
     error_eu = 0.5
 print(f"EU Weight learning rate: {weight_learning_rate_eu}, EU Error: {error_eu}")
 # EU hyperparameters
+OMD_METHODS = {"omd_tch", "omd_tch_eg", "omd_tch_pgd", "afleg", "afl"}
+
+
+def _mtl_log_metrics(method_name, weight_method, extra_outputs):
+    if not extra_outputs:
+        return {}
+
+    if method_name == "eu":
+        metrics = {"EU Weight": float(weight_method.method.w.detach().cpu().item())}
+        weight_grad = getattr(weight_method.method.w, "grad", None)
+        if weight_grad is not None:
+            metrics["EU weight grad"] = float(weight_grad.detach().cpu().item())
+        return metrics
+
+    if method_name in OMD_METHODS:
+        updated_weights = extra_outputs.get("updated_omd_weights")
+        metrics = {"OMD eta": float(extra_outputs.get("eta", 0.0))}
+        if isinstance(updated_weights, torch.Tensor) and updated_weights.numel() >= 2:
+            metrics["OMD retain weight"] = float(updated_weights[0].detach().cpu().item())
+            metrics["OMD forget weight"] = float(updated_weights[1].detach().cpu().item())
+        return metrics
+
+    if method_name == "chebyshev":
+        active_task = extra_outputs.get("active_task")
+        if active_task is not None:
+            return {"Chebyshev active task": int(active_task)}
+    return {}
+
+
+def _mtl_postfix(method_name, weight_method, extra_outputs):
+    if not extra_outputs:
+        return {}
+
+    if method_name == "eu":
+        return {"eu_weight": float(weight_method.method.w.detach().cpu().item())}
+
+    if method_name in OMD_METHODS:
+        updated_weights = extra_outputs.get("updated_omd_weights")
+        if isinstance(updated_weights, torch.Tensor) and updated_weights.numel() >= 2:
+            return {
+                "retain_w": float(updated_weights[0].detach().cpu().item()),
+                "forget_w": float(updated_weights[1].detach().cpu().item()),
+            }
+        return {}
+
+    if method_name == "chebyshev" and extra_outputs.get("active_task") is not None:
+        return {"active_task": int(extra_outputs["active_task"])}
+    return {}
 
 
 
@@ -69,13 +138,6 @@ def nsfw_removal(
     # choose parameters to train based on train_method
     parameters = []
 
-    if args.mtl:
-        weight_methods_parameters = extract_weight_method_parameters_from_args(args)
-        method_kwargs = dict(weight_methods_parameters[args.mtl_method])
-        if args.mtl_method == "eu":
-            method_kwargs.update(dict(w_lr=weight_learning_rate_eu, error=error_eu))
-        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, **method_kwargs)
- 
     for name, param in model.model.diffusion_model.named_parameters():
         # train only x attention layers
         if train_method == "xattn":
@@ -111,15 +173,19 @@ def nsfw_removal(
 
     # TRAINING CODE
     for epoch in range(epochs):
+        remain_iter = iter(remain_dl)
         with tqdm(total=len(forget_dl)) as time:
             # with tqdm(total=10) as time:
 
-            for i, iages in enumerate(forget_dl):
+            for i, forget_images in enumerate(forget_dl):
                 # for i in range(1):
                 optimizer.zero_grad()
 
-                forget_images = next(iter(forget_dl))
-                remain_images = next(iter(remain_dl))
+                try:
+                    remain_images = next(remain_iter)
+                except StopIteration:
+                    remain_iter = iter(remain_dl)
+                    remain_images = next(remain_iter)
 
                 forget_prompts = [word_nude] * batch_size
 
@@ -174,12 +240,26 @@ def nsfw_removal(
                 #losses.append(loss.item() / batch_size)
                 remain_loss_alpha = alpha * remain_loss
 
-                loss, _ = weight_method.backward(
-                    losses=torch.stack([remain_loss_alpha, forget_loss]),
-                    shared_parameters=list(model.model.diffusion_model.parameters()),
-                )
+                if args.mtl:
+                    loss, method_outputs = weight_method.backward(
+                        losses=torch.stack([remain_loss_alpha, forget_loss]),
+                        shared_parameters=list(model.model.diffusion_model.parameters()),
+                    )
+                else:
+                    method_outputs = {}
+                    loss = forget_loss + remain_loss_alpha
+                    loss.backward()
                 losses.append(loss.item() / batch_size)
-                wandb.log({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size})
+                train_metrics = {
+                    "loss": loss.item() / batch_size,
+                    "remain_loss": remain_loss.item() / batch_size,
+                    "forget_loss": forget_loss.item() / batch_size,
+                }
+                if args.mtl:
+                    train_metrics.update(
+                        _mtl_log_metrics(args.mtl_method, weight_method, method_outputs)
+                    )
+                wandb.log(train_metrics)
 
                 if False:#mask_path:
                     for n, p in model.named_parameters():
@@ -191,7 +271,7 @@ def nsfw_removal(
 
                 optimizer.step()
 
-                if args.mtl_method == "eu":
+                if args.mtl and args.mtl_method == "eu":
                     with torch.no_grad():
                         """
                         remain_input, remain_emb = model.get_input(
@@ -204,10 +284,28 @@ def nsfw_removal(
                         new_remain_loss = criteria(remain_out, noise)"""
                         new_remain_loss = model.shared_step(remain_batch)[0]
                         weight_method.method.update(new_remain_loss.detach())
-                        wandb.log({"EU Weight": weight_method.method.w, "EU update Loss": new_remain_loss.item() / batch_size, "EU weight grad": weight_method.method.w.grad})
+                        eu_metrics = {
+                            "EU Weight": float(weight_method.method.w.detach().cpu().item()),
+                            "EU update Loss": new_remain_loss.item() / batch_size,
+                        }
+                        weight_grad = getattr(weight_method.method.w, "grad", None)
+                        if weight_grad is not None:
+                            eu_metrics["EU weight grad"] = float(
+                                weight_grad.detach().cpu().item()
+                            )
+                        wandb.log(eu_metrics)
 
                 time.set_description("Epo-ch %i" % epoch)
-                time.set_postfix({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size, "eu_weight": weight_method.method.w.detach().cpu().numpy()[0]})
+                progress = {
+                    "loss": loss.item() / batch_size,
+                    "remain_loss": remain_loss.item() / batch_size,
+                    "forget_loss": forget_loss.item() / batch_size,
+                }
+                if args.mtl:
+                    progress.update(
+                        _mtl_postfix(args.mtl_method, weight_method, method_outputs)
+                    )
+                time.set_postfix(progress)
                 sleep(0.1)
                 time.update(1)
 

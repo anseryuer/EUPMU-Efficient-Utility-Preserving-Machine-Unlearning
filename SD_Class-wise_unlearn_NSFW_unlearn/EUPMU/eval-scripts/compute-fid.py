@@ -1,5 +1,6 @@
 # https://huggingface.co/docs/diffusers/conceptual/evaluation
 import argparse
+from pathlib import Path
 
 import torch
 from dataset import setup_fid_data
@@ -22,8 +23,10 @@ def compute_fid(class_to_forget, path, image_size):
 
     print("++++++++++++++++++++++++++++++FID RESULE:+++++++++++++++++++++++++++++++")
     print(path)
-    print(fid.compute())  # doctest: +SKIP
+    fid_score = fid.compute()
+    print(fid_score)  # doctest: +SKIP
     print("+++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    return fid_score
 
 
 if __name__ == "__main__":
@@ -41,10 +44,21 @@ if __name__ == "__main__":
         required=False,
         default=512,
     )
+    parser.add_argument(
+        "--save_path",
+        help="optional path to save the FID as plain text",
+        type=str,
+        required=False,
+        default=None,
+    )
     args = parser.parse_args()
 
     path = args.folder_path
     class_to_forget = args.class_to_forget
     image_size = args.image_size
     print("class_to_forget:", class_to_forget)
-    compute_fid(class_to_forget, path, image_size)
+    fid_score = compute_fid(class_to_forget, path, image_size)
+    if args.save_path is not None:
+        save_path = Path(args.save_path)
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        save_path.write_text(f"{float(fid_score):.10f}\n")

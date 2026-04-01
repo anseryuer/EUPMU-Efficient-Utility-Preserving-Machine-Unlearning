@@ -1,4 +1,6 @@
 from functools import partial
+import os
+from pathlib import Path
 
 import clip
 import kornia
@@ -10,6 +12,18 @@ from ldm.modules.x_transformer import (  # TODO: can we directly rely on lucidra
     TransformerWrapper,
 )
 from ldm.util import default
+
+
+def _resolve_pretrained_path(version: str) -> str:
+    env_override = os.environ.get("HF_CLIP_LOCAL_PATH")
+    if env_override:
+        return env_override
+
+    repo_root = Path(__file__).resolve().parents[3]
+    local_hf_path = repo_root / "hf-cache" / version.replace("/", "-")
+    if local_hf_path.exists():
+        return str(local_hf_path)
+    return version
 
 
 class AbstractEncoder(nn.Module):
@@ -234,8 +248,9 @@ class FrozenCLIPEmbedder(AbstractEncoder):
         self, version="openai/clip-vit-large-patch14", device="cuda", max_length=77
     ):  # clip-vit-base-patch32
         super().__init__()
-        self.tokenizer = CLIPTokenizer.from_pretrained(version)
-        self.transformer = CLIPTextModel.from_pretrained(version)
+        pretrained_path = _resolve_pretrained_path(version)
+        self.tokenizer = CLIPTokenizer.from_pretrained(pretrained_path)
+        self.transformer = CLIPTextModel.from_pretrained(pretrained_path)
         self.device = device
         self.max_length = max_length  # TODO: typical value?
         self.freeze()

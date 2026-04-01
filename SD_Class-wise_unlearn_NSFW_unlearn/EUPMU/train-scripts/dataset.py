@@ -3,32 +3,29 @@ from pathlib import Path
 import numpy as np
 import torch
 import torchvision.transforms as torch_transforms
-from datasets import load_dataset
-
-
 import os
 import sys
+from shutil import move
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-print(parent_dir)
 sys.path.append(parent_dir)
+
+_HF_DATASETS_IMPORT_ERROR = None
+try:
+    from datasets import load_dataset as hf_load_dataset
+except Exception as exc:
+    hf_load_dataset = None
+    _HF_DATASETS_IMPORT_ERROR = exc
 
 from ldm.util import instantiate_from_config
 from omegaconf import OmegaConf
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision.transforms.functional import InterpolationMode
-import datasets
 
 import copy
 import glob
-import os
-from shutil import move
-
-import numpy as np
-import torch
 from PIL import Image
-from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import transforms
 from torchvision.datasets import CIFAR10, CIFAR100, SVHN, ImageFolder
 from tqdm import tqdm
@@ -40,6 +37,17 @@ INTERPOLATIONS = {
     "bicubic": InterpolationMode.BICUBIC,
     "lanczos": InterpolationMode.LANCZOS,
 }
+
+
+def _load_hf_dataset(*args, **kwargs):
+    if hf_load_dataset is None:
+        raise ImportError(
+            "Failed to import Hugging Face `datasets`. This training pipeline needs "
+            "`datasets` plus a working `pyarrow>=8.0.0` install. In the `ldm` env, "
+            "reinstall `pyarrow` and `datasets` so the imported `pyarrow` version "
+            "matches the package metadata."
+        ) from _HF_DATASETS_IMPORT_ERROR
+    return hf_load_dataset(*args, **kwargs)
 
 
 def _convert_image_to_rgb(image):
@@ -61,7 +69,7 @@ def get_transform(interpolation=InterpolationMode.BICUBIC, size=512):
 
 class Imagenette(Dataset):
     def __init__(self, split, class_to_forget=None, transform=None):
-        self.dataset = load_dataset("frgfm/imagenette", "160px")[split]
+        self.dataset = _load_hf_dataset("frgfm/imagenette", "160px")[split]
         self.class_to_idx = {
             cls: i for i, cls in enumerate(self.dataset.features["label"].names)
         }
@@ -91,7 +99,7 @@ class Imagenette(Dataset):
 
 class NSFW(Dataset):
     def __init__(self, transform=None):
-        self.dataset = load_dataset("data/nsfw")["train"]
+        self.dataset = _load_hf_dataset("data/nsfw")["train"]
         self.transform = transform
 
     def __len__(self):
@@ -109,7 +117,7 @@ class NSFW(Dataset):
 
 class NOT_NSFW(Dataset):
     def __init__(self, transform=None):
-        self.dataset = load_dataset("data/not-nsfw")["train"]
+        self.dataset = _load_hf_dataset("data/not-nsfw")["train"]
         self.transform = transform
 
     def __len__(self):
@@ -126,7 +134,7 @@ class NOT_NSFW(Dataset):
     
 class ForgetDS(Dataset):
     def __init__(self, data_dir, transform=None, prompt_list = None):
-        self.dataset = load_dataset(data_dir)["train"]
+        self.dataset = _load_hf_dataset(data_dir)["train"]
         self.transform = transform
         self.prompt_list = prompt_list
     def __len__(self):
@@ -145,7 +153,7 @@ class ForgetDS(Dataset):
 
 class RetainDS(Dataset):
     def __init__(self, data_dir, transform=None, prompt_list = None):
-        self.dataset = load_dataset(data_dir)["train"]
+        self.dataset = _load_hf_dataset(data_dir)["train"]
         self.transform = transform
         self.prompt_list = prompt_list
     def __len__(self):

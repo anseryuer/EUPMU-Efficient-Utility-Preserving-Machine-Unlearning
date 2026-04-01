@@ -34,9 +34,30 @@ Note that this code base aims to forget one class and preserve the other 9 in th
     ```
    python train-scripts/random_label_eu.py --train_method full --alpha 0.5 --lr 1e-5 --epochs 5  --class_to_forget 0  --device '0' --mtl --mtl_method "eu"
     ```
-   This should create another folder in `./model`. 
+   This should create another folder in `./models`.
 
    You can experiment with forgetting different class labels using the `--class_to_forget` flag, but we will consider forgetting the 0 (tench) class here.
+
+2. Forgetting training with OMD-TCH
+
+    Exponentiated-gradient OMD-TCH:
+    ```
+   python train-scripts/random_label_eu.py --train_method full --alpha 0.5 --lr 1e-5 --epochs 5 --class_to_forget 0 --device '0' --mtl --mtl_method "omd_tch"
+    ```
+
+    Projected-gradient OMD-TCH:
+    ```
+   python train-scripts/random_label_eu.py --train_method full --alpha 0.5 --lr 1e-5 --epochs 5 --class_to_forget 0 --device '0' --mtl --mtl_method "omd_tch_pgd"
+    ```
+
+    To run all Imagenette classes with the paper-style `alpha=0.01` setting, you can use:
+    ```
+   bash unlearning_all_classes_eu.sh
+   bash unlearning_all_classes_omd_tch.sh
+   bash unlearning_all_classes_omd_tch_pgd.sh
+    ```
+
+    For mixed-method Table 1 style sweeps, `run_table1_sd.sh` now supports `eu`, `rl`, `esd`, `omd_tch`, and `omd_tch_pgd` via the `METHODS` environment variable.
 
 # Generating Images
   1. To use `eval-scripts/generate-images.py` you would need a csv file with columns `prompt`, `evaluation_seed` and `case_number`. (Sample data in `data/`)
