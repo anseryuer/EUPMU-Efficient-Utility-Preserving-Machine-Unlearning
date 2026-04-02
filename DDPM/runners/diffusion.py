@@ -26,6 +26,7 @@ from torch.utils.data import DataLoader
 from torchvision.datasets import ImageFolder
 
 from mtl.eu import EU
+from mtl.omd_tch import OMDTCHBase
 
 import wandb
 
@@ -773,6 +774,138 @@ class Diffusion(object):
                 self.sample_visualization(test_model, step, args.cond_scale)
                 del test_model
 
+
+    def omd_tch(self):
+        args, config = self.args, self.config
+
+        D_remain_loader, D_forget_loader = get_forget_dataset(
+            args, config, args.label_to_forget
+        )
+        D_remain_iter = cycle(D_remain_loader)
+        D_forget_iter = cycle(D_forget_loader)
+
+        if args.mask_path:
+            mask = None
+        else:
+            mask = None
+
+        print("Loading checkpoints {}".format(args.ckpt_folder))
+
+        model = Conditional_Model(config)
+        states = torch.load(
+            os.path.join(args.ckpt_folder, "ckpts/ckpt.pth"),
+            map_location=self.device,
+        )
+        model = model.to(self.device)
+        model = torch.nn.DataParallel(model)
+        model.load_state_dict(states[0], strict=True)
+        optimizer = get_optimizer(config, model.parameters())
+        weight_opt = OMDTCHBase(n_tasks=2, device=self.device, eta=wandb.config.omd_eta, update_rule=wandb.config.omd_update_rule, adaptive=wandb.config.omd_adaptive)
+        criteria = torch.nn.MSELoss()
+
+        if self.config.model.ema:
+            ema_helper = EMAHelper(mu=config.model.ema_rate)
+            ema_helper.register(model)
+            ema_helper.load_state_dict(states[-1])
+        else:
+            ema_helper = None
+
+        model.train()
+        start = time.time()
+        for step in range(0, self.config.training.n_iters):
+            model.train()
+
+            # remain stage
+            remain_x, remain_c = next(D_remain_iter)
+            remain_n = remain_x.size(0)
+            remain_x = remain_x.to(self.device)
+            remain_x = data_transform(self.config, remain_x)
+            remain_e = torch.randn_like(remain_x)
+            remain_b = self.betas
+
+            remain_t = torch.randint(low=0, high=self.num_timesteps, size=(remain_n // 2 + 1,)).to(
+                self.device
+            )
+            remain_t = torch.cat([remain_t, self.num_timesteps - remain_t - 1], dim=0)[:remain_n]
+            remain_loss = loss_registry_conditional[config.model.type](
+                model, remain_x, remain_t, remain_c, remain_e, remain_b
+            )
+
+            # forget stage
+            forget_x, forget_c = next(D_forget_iter)
+
+            n = forget_x.size(0)
+            forget_x = forget_x.to(self.device)
+            forget_x = data_transform(self.config, forget_x)
+            e = torch.randn_like(forget_x)
+            b = self.betas
+
+            t = torch.randint(low=0, high=self.num_timesteps, size=(n // 2 + 1,)).to(
+                self.device
+            )
+            t = torch.cat([t, self.num_timesteps - t - 1], dim=0)[:n]
+
+            if args.method == "ga":
+                forget_loss = -loss_registry_conditional[config.model.type](
+                    model, forget_x, t, forget_c, e, b
+                )
+
+            else:
+                a = (1 - b).cumprod(dim=0).index_select(0, t).view(-1, 1, 1, 1)
+                forget_x = forget_x * a.sqrt() + e * (1.0 - a).sqrt()
+
+                output = model(forget_x, t.float(), forget_c, mode="train")
+
+                if args.method == "rl":
+                    pseudo_c = torch.full(
+                        forget_c.shape,
+                        (args.label_to_forget + 1) % 10,
+                        device=forget_c.device,
+                    )
+                    pseudo = model(forget_x, t.float(), pseudo_c, mode="train").detach()
+                    forget_loss = criteria(pseudo, output)
+
+            remain_loss = args.alpha * remain_loss
+
+            # MARK: losses
+            if (step + 1) % self.config.training.log_freq == 0:
+                end = time.time()
+                logging.info(f"step: {step}, forget_loss: {forget_loss.item()}, remain_loss: {remain_loss.item()} time: {end-start}")
+                start = time.time()
+
+            optimizer.zero_grad()
+            loss, extra = weight_opt.backward(torch.stack([remain_loss, forget_loss]), model.parameters())
+            optimizer.step()
+
+            wandb.log({
+                "forget_loss": forget_loss.item(),
+                "remain_loss": remain_loss.item(),
+                "omd_weight_remain": extra["omd_weights"][0].item(),
+                "omd_weight_forget": extra["omd_weights"][1].item(),
+            })
+
+            if (step + 1) % self.config.training.snapshot_freq == 0:
+                states = [
+                    model.state_dict(),
+                    optimizer.state_dict(),
+                    step,
+                ]
+                if self.config.model.ema:
+                    states.append(ema_helper.state_dict())
+
+                torch.save(
+                    states,
+                    os.path.join(self.config.ckpt_dir, "ckpt.pth"),
+                )
+
+                test_model = (
+                    ema_helper.ema_copy(model)
+                    if self.config.model.ema
+                    else copy.deepcopy(model)
+                )
+                test_model.eval()
+                self.sample_visualization(test_model, step, args.cond_scale)
+                del test_model
 
     def load_ema_model(self):
         model = Conditional_Model(self.config)

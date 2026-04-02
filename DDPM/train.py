@@ -20,6 +20,15 @@ except:
     wandb.config.weight_learning_rate_eu = 5
     wandb.config.error_eu = 3.0
 
+try:
+    omd_eta = wandb.config.omd_eta
+    omd_update_rule = wandb.config.omd_update_rule
+    omd_adaptive = wandb.config.omd_adaptive
+except:
+    wandb.config.omd_eta = 0.1
+    wandb.config.omd_update_rule = "eg"
+    wandb.config.omd_adaptive = False
+
 def parse_args_and_config():
     parser = argparse.ArgumentParser(description=globals()["__doc__"])
 
@@ -164,6 +173,10 @@ def main():
         elif args.mode == "generate_mask":
             runner = Diffusion(args, config)
             runner.generate_mask()
+        elif args.mode == "omd_tch":
+            runner = Diffusion(args, config)
+            runner.omd_tch()
+
     except Exception:
         logging.error(traceback.format_exc())
 
