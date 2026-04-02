@@ -155,16 +155,21 @@ def nsfw_removal(
     optimizer = torch.optim.Adam(parameters, lr=lr)
     criteria = torch.nn.MSELoss()
 
+    run_tag = "plain"
+    if args.mtl and args.mtl_method:
+        run_tag = f"mtl_{args.mtl_method}"
+
     if mask_path:
         mask = torch.load(mask_path)
-        name = f"compvis-nsfw-mask-method_{train_method}-lr_{lr}"
+        name = f"compvis-nsfw-{run_tag}-mask-method_{train_method}-alpha_{alpha}-lr_{lr}"
     else:
-        name = f"compvis-nsfw-method_{train_method}-lr_{lr}"
+        name = f"compvis-nsfw-{run_tag}-method_{train_method}-alpha_{alpha}-lr_{lr}"
     if args.mtl:
         weight_methods_parameters = extract_weight_method_parameters_from_args(args)
         method_kwargs = dict(weight_methods_parameters[args.mtl_method])
         if args.mtl_method == "eu":
             method_kwargs.update(dict(w_lr=weight_learning_rate_eu, error=error_eu))
+            name += f"-w_lr_{weight_learning_rate_eu}-err_{error_eu}"
         weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, **method_kwargs)
 
     # NSFW Removal

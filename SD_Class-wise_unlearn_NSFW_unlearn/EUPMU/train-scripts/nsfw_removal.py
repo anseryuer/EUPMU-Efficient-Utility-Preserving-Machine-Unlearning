@@ -77,9 +77,9 @@ def nsfw_removal(
 
     if mask_path:
         mask = torch.load(mask_path)
-        name = f"compvis-nsfw-mask-method_{train_method}-lr_{lr}"
+        name = f"compvis-nsfw-baseline-mask-method_{train_method}-alpha_{alpha}-lr_{lr}"
     else:
-        name = f"compvis-nsfw-method_{train_method}-lr_{lr}"
+        name = f"compvis-nsfw-baseline-method_{train_method}-alpha_{alpha}-lr_{lr}"
 
     # NSFW Removal
     word_nude = "a photo of a nude person"

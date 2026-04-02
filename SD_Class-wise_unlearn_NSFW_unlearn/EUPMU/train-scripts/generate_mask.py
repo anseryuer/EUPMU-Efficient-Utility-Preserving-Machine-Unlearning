@@ -125,6 +125,7 @@ def generate_nsfw_mask(
     num_timesteps=1000,
 ):
     # MODEL TRAINING SETUP
+    os.makedirs("mask", exist_ok=True)
     model = setup_model(config_path, ckpt_path, device)
     train_dl, _ = setup_forget_nsfw_data(batch_size, image_size)
     print(len(train_dl))
