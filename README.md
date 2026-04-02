@@ -29,8 +29,149 @@ The file structure:
 ## Recommended Setup
 Except the SD_Class-wise_unlearn_NSFW_unlearn/ which is based on SalUn's SD unlearning code base, all other folders can be easily runned on a 24GB VRAM GPU. The SD_Class-wise_unlearn_NSFW_unlearn/ folder can be runned on 48GB VRAM but 32GB cards like RTX 5090 are not tested.
 
+## Clarification on the Practical Implementation of EUPMU (EU Update)
+
+We would like to clarify a subtle but important detail regarding the implementation of the implicit gradient surgery (EU / EUPMU) update, as it may appear slightly different from the derivation in the paper.
+
+### Theoretical Form (Paper)
+
+In the paper, the update of the dual variable is derived from the constrained optimization formulation:
+
+$$
+\tilde{\delta}_t = \frac{1}{\alpha_t} \bigl(\ell_r(\theta_t) - \ell_r(\theta_{t+1})\bigr) + \epsilon_t,
+$$
+
+and
+
+$$
+\lambda_{t+1} = \lambda_t - \beta_t \tilde{\delta}_t.
+$$
+
+Here, $\epsilon_t \ge 0$ represents a tolerance for utility degradation:  
+we allow small increases in retaining loss without immediately increasing $\lambda_t$.
+
+
+
+### Practical Implementation (Code)
+
+In the released code, we use the following form:
+
+```python
+delta = (prev_loss.log() - curr_loss.log()) - self.error
+````
+
+and update the weight $w$ (i.e., $\lambda$ ) using Adam.
+
+This can be written as:
+
+$$
+\tilde{\delta}_t^{\text{impl}} = \bigl(\log \ell_r(\theta_t) - \log \ell_r(\theta_{t+1})\bigr) - \epsilon,
+$$
+
+where `self.error` corresponds to $\epsilon$.
+
+
+
+### Why the Form Looks Different (but is Equivalent)
+
+Although the implementation uses a **log-difference with subtraction**, it is still consistent with the paper formulation.
+
+#### (a) Log transformation
+
+For small changes in loss, we have the first-order approximation:
+
+$$
+\log \ell_r(\theta_t) - \log \ell_r(\theta_{t+1})
+\approx
+\frac{\ell_r(\theta_t) - \ell_r(\theta_{t+1})}{\ell_r(\theta_t)}.
+$$
+
+Thus, the log-difference is simply a **scaled version of the original improvement term**, preserving its sign and relative magnitude.
+
+#### (b) Sign and subtraction of $\epsilon$
+
+In the paper: $\tilde{\delta}_t = (\text{improvement}) + \epsilon_t$
+
+In implementation: $\tilde{\delta}_t^{\text{impl}} = (\text{improvement}) - \epsilon$
+
+This difference comes from **where the threshold is applied**.
+
+* In the paper, $\epsilon_t$ appears inside the dual objective.
+* In the code, it is implemented as a **margin (dead zone)** directly on the improvement signal.
+
+Both formulations enforce the same condition:
+
+> **The retain loss must improve by at least $\epsilon$ (up to scaling) to prevent $\lambda$ from increasing.**
+
+Equivalently:
+
+* If improvement is large → $\lambda$ decreases or stays stable
+* If improvement is small or negative → $\lambda$ increases
+
+Therefore, `self.error` in code plays the same role as $\epsilon_t$ in the paper:
+it controls the **tolerance of utility degradation**.
+
+
+
+### Why Use Log Loss + Adam?
+
+The implementation follows a practical design inspired by:
+
+> **FAMO: Fast Adaptive Multitask Optimization (NeurIPS 2023)**
+> [https://arxiv.org/abs/2306.03792](https://arxiv.org/abs/2306.03792)
+
+Specifically, we adopt two choices from this line of work:
+
+#### (a) Log-loss difference
+
+* Makes the update depend on **relative improvement** instead of absolute scale
+* Stabilizes training across different tasks and loss magnitudes
+* Reduces sensitivity to noisy minibatch estimates
+
+#### (b) Adam optimizer for $\lambda$
+
+Instead of directly applying:
+
+$$
+\lambda_{t+1} = \lambda_t - \beta_t \tilde{\delta}_t
+$$
+
+we treat $\lambda$ (or $w$) as a learnable scalar and update it with Adam:
+
+$$
+\lambda_{t+1} = \text{Adam}(\lambda_t, \tilde{\delta}_t).
+$$
+
+This provides:
+
+* Smoother updates under stochastic noise
+* Automatic step-size adaptation
+* Better empirical stability (especially in diffusion models)
+
+
+
+### Key Takeaway
+
+The implementation and the theory are **fully aligned at the conceptual level**:
+
+* Both enforce a **utility-preserving constraint via a tolerance parameter**
+* Both adjust $\lambda$ based on **retain loss improvement**
+* Both approximate the same dual optimization process
+
+The differences (log transform, subtraction form, Adam update) are **practical enhancements**,
+mainly inspired by FAMO-style adaptive weighting, to improve stability and performance in real training.
+
+
+
+If you are reproducing results, we recommend treating:
+
+* `self.error` as the practical version of $\epsilon_t$
+* the log-loss + Adam update as a **stable surrogate of the theoretical update**
+
+rather than expecting a strict one-to-one numerical match with Eq. (8).
+
+
 ## Known Issues and TODOs
 - The EUPMU error and w_lr hyperparameter is not exactly the same thing as in the paper since we found that this way the code is just much simpler and better in practice. Overall the algorithm is the same as in the paper. More documentation will be added soon.
-- EUPMU not working well with MUON optimizer.
 - EUPMU working fine with cosine scheduler but there could be issues when the lr is changing rapidly across a large range.
 

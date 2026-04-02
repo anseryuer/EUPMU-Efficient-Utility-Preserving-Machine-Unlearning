@@ -338,7 +338,7 @@ def main(args):
 if __name__ == "__main__":
     args = arg_parser.parse_args()
     if args.wandb_project is not None:
-        wandb.login(key="YOUR_WANDB_API_KEY")
+        wandb.login()
         wandb.init(project=args.wandb_project, name=args.wandb_entity, config=args)
 
     main(args)
