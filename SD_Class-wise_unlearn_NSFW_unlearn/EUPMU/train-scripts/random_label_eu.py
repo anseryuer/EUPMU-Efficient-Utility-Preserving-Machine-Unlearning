@@ -98,8 +98,8 @@ def certain_label(
                 except StopIteration:
                     remain_iter = iter(remain_dl)
                     remain_images, remain_labels = next(remain_iter)
-                print(f"Batch {i}: forget_labels[0]={forget_labels[0]}, remain_labels[0]={remain_labels[0]}")
-                if i == 2: break
+                # print(f"Batch {i}: forget_labels[0]={forget_labels[0]}, remain_labels[0]={remain_labels[0]}")
+                # if i == 2: break
                 torch.cuda.empty_cache()
                 #import pdb
                 #pdb.set_trace()
