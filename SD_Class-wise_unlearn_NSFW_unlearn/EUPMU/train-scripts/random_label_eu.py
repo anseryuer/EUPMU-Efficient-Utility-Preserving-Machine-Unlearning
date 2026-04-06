@@ -14,17 +14,6 @@ from weighted_methods.weight_methods import WeightMethods
 
 import random
 
-import wandb
-wandb.init(project="SD_unlearning")
-try:
-    # Retrieve hyperparameters from the sweep configuration
-    weight_learning_rate_eu = wandb.config.weight_learning_rate_eu
-    error_eu = wandb.config.error_eu
-except:
-    # Set default hyperparameters
-    weight_learning_rate_eu = 3
-    error_eu = 0
-print(f"EU Weight learning rate: {weight_learning_rate_eu}, EU Error: {error_eu}")
 # EU hyperparameters
 
 
@@ -41,7 +30,12 @@ def certain_label(
     device,
     image_size=512,
     ddim_steps=50,
+    w_lr=3.0,
+    error=0.0,
+    use_wandb=False,
 ):
+    if use_wandb:
+        import wandb
     # MODEL TRAINING SETUP
     model = setup_model(config_path, ckpt_path, device)
     criteria = torch.nn.MSELoss()
@@ -78,13 +72,13 @@ def certain_label(
 
         name = f"compvis-cl-mask-class_{str(class_to_forget)}-method_{train_method}-epoch_{epochs}-lr_{lr}"
     else:
-        name = f"compvis-cl-class_{str(class_to_forget)}-method_{train_method}-epoch_{epochs}-lr_{lr}-random_{random.randint(0, 1000)}"
+        name = f"compvis-cl-class_{str(class_to_forget)}-method_{train_method}-epoch_{epochs}-lr_{lr}"
     if args.mtl:
         assert args.mtl_method == "eu" # Only implemented for efficient unlearning
         # weight method
         weight_methods_parameters = extract_weight_method_parameters_from_args(args)
-        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = weight_learning_rate_eu,error = error_eu)
-        name += f"-mtl_{args.mtl_method}-w_lr_{weight_learning_rate_eu}-err_{error_eu}"
+        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = w_lr, error = error)
+        name += f"-mtl_{args.mtl_method}-w_lr_{w_lr}-err_{error}"
     # TRAINING CODE
     remain_iter = iter(remain_dl)
     for epoch in range(epochs):
@@ -165,7 +159,8 @@ def certain_label(
                 )
                 torch.cuda.empty_cache()
                 losses.append(loss.item() / batch_size)
-                wandb.log({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size})
+                if use_wandb:
+                    wandb.log({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size})
 
                 if mask_path:
                     print("Applying mask")
@@ -193,7 +188,8 @@ def certain_label(
                         new_remain_loss = model.shared_step(remain_batch)[0]
                         weight_method.method.update(new_remain_loss.detach())
                         torch.cuda.empty_cache()
-                        wandb.log({"EU Weight": weight_method.method.w, "EU update Loss": new_remain_loss.item() / batch_size, "EU weight grad": weight_method.method.w.grad})
+                        if use_wandb:
+                            wandb.log({"EU Weight": weight_method.method.w, "EU update Loss": new_remain_loss.item() / batch_size, "EU weight grad": weight_method.method.w.grad})
 
                 time.set_description("Epo-ch %i" % epoch)
                 time.set_postfix({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size, "eu_weight": weight_method.method.w.detach().cpu().numpy()[0]})
@@ -347,7 +343,24 @@ if __name__ == "__main__":
     )
     parser.add_argument("--mtl", action="store_true", default=False, help="")
     parser.add_argument("--mtl_method", type=str, default=None, help="")
+    parser.add_argument("--seed", type=int, default=42, help="random seed for execution")
+    parser.add_argument("--wandb", action="store_true", help="enable wandb logging")
+    parser.add_argument("--w_lr", type=float, default=3.0, help="eu weight learning rate")
+    parser.add_argument("--error", type=float, default=0.5, help="eu error")
     args = parser.parse_args()
+
+    # Set seeds
+    if args.seed is not None:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+    if args.wandb:
+        import wandb
+        wandb.init(project="SD_unlearning")
 
     # classes = [int(d) for d in args.classes.split(',')]
     classes = int(args.class_to_forget)
@@ -377,5 +390,10 @@ if __name__ == "__main__":
         device,
         image_size,
         ddim_steps,
+        args.w_lr,
+        args.error,
+        args.wandb,
     )
-wandb.finish()
+    if args.wandb:
+        import wandb
+        wandb.finish()

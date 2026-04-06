@@ -341,20 +341,12 @@ class EU(WeightMethod):
         super().__init__(2, device=device)
         self.min_losses = torch.zeros(2).to(device)
         self.w = torch.tensor([0.], device=device, requires_grad=True)
-        try:
-            w_lr = wandb.config.weight_learning_rate_eu
-        except:
-            print("No wandb weight learning rate found")
-            pass
         print("w_lr", w_lr, "error", error)
         self.w_opt = torch.optim.Adam([self.w], lr=w_lr, weight_decay=gamma)
         self.max_norm = max_norm
         self.n_tasks = 2
         self.device = device
-        try:
-            self.error = wandb.config.error_eu
-        except:
-            self.error = error
+        self.error = error
 
     def set_min_losses(self, losses):
         self.min_losses = losses
