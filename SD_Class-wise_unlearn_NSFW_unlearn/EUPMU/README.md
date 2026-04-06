@@ -32,7 +32,7 @@ Note that this code base aims to forget one class and preserve the other 9 in th
 1. Forgetting training with EUPMU
 
     ```
-   python train-scripts/random_label_eu.py --train_method full --alpha 0.5 --lr 1e-5 --epochs 5  --class_to_forget 0  --device '0' --mtl --mtl_method "eu"
+   python train-scripts/random_label_eu.py --train_method full --lr 1e-5 --epochs 5  --class_to_forget 0  --device '0' --mtl --mtl_method "eu"
     ```
    This should create another folder in `./model`. 
 

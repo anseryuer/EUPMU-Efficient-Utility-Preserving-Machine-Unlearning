@@ -31,7 +31,6 @@ print(f"EU Weight learning rate: {weight_learning_rate_eu}, EU Error: {error_eu}
 def certain_label(
     class_to_forget,
     train_method,
-    alpha,
     batch_size,
     epochs,
     lr,
@@ -77,9 +76,9 @@ def certain_label(
     if mask_path:
         mask = torch.load(mask_path)
 
-        name = f"compvis-cl-mask-class_{str(class_to_forget)}-method_{train_method}-alpha_{alpha}-epoch_{epochs}-lr_{lr}"
+        name = f"compvis-cl-mask-class_{str(class_to_forget)}-method_{train_method}-epoch_{epochs}-lr_{lr}"
     else:
-        name = f"compvis-cl-class_{str(class_to_forget)}-method_{train_method}-alpha_{alpha}-epoch_{epochs}-lr_{lr}-random_{random.randint(0, 1000)}"
+        name = f"compvis-cl-class_{str(class_to_forget)}-method_{train_method}-epoch_{epochs}-lr_{lr}-random_{random.randint(0, 1000)}"
     if args.mtl:
         assert args.mtl_method == "eu" # Only implemented for efficient unlearning
         # weight method
@@ -148,14 +147,13 @@ def certain_label(
                 forget_loss = criteria(forget_out, pseudo_out)
 
                 # total loss
-                remain_loss_alpha = alpha * remain_loss
                 torch.cuda.empty_cache()
 
-                #loss = forget_loss + alpha * remain_loss
+                #loss = forget_loss + remain_loss
                 #loss.backward()
                 #print(f"forget_loss: {forget_loss.item() / batch_size}, remain_loss: {remain_loss.item() / batch_size}")
                 loss, _ = weight_method.backward(
-                    losses=torch.stack([remain_loss_alpha, forget_loss]),
+                    losses=torch.stack([remain_loss, forget_loss]),
                     shared_parameters=list(model.model.diffusion_model.parameters()),
                 )
                 torch.cuda.empty_cache()
@@ -275,13 +273,6 @@ if __name__ == "__main__":
         "--train_method", help="method of training", type=str, required=True
     )
     parser.add_argument(
-        "--alpha",
-        help="guidance of start image used to train",
-        type=float,
-        required=False,
-        default=0.1,
-    )
-    parser.add_argument(
         "--batch_size",
         help="batch_size used to train",
         type=int,
@@ -355,7 +346,6 @@ if __name__ == "__main__":
     classes = int(args.class_to_forget)
     print(classes)
     train_method = args.train_method
-    alpha = args.alpha
     batch_size = args.batch_size
     epochs = args.epochs
     lr = args.lr
@@ -370,7 +360,6 @@ if __name__ == "__main__":
     certain_label(
         classes,
         train_method,
-        alpha,
         batch_size,
         epochs,
         lr,
