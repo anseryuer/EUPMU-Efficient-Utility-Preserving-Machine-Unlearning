@@ -32,7 +32,7 @@ if __name__ == "__main__":
     )
     parser.add_argument("--folder_path", help="path of images", type=str, required=True)
     parser.add_argument(
-        "--class_to_forget", help="class_to_forget", type=int, required=False, default=6
+        "--class_to_forget", help="class_to_forget", type=int, required=True
     )
     parser.add_argument(
         "--image_size",
