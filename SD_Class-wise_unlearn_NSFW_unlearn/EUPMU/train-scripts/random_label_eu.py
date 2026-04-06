@@ -86,13 +86,20 @@ def certain_label(
         weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = weight_learning_rate_eu,error = error_eu)
         name += f"-mtl_{args.mtl_method}-w_lr_{weight_learning_rate_eu}-err_{error_eu}"
     # TRAINING CODE
+    remain_iter = iter(remain_dl)
     for epoch in range(epochs):
         with tqdm(total=len(forget_dl)) as time:
             for i, (images, labels) in enumerate(forget_dl):
                 optimizer.zero_grad()
 
-                forget_images, forget_labels = next(iter(forget_dl))
-                remain_images, remain_labels = next(iter(remain_dl))
+                forget_images, forget_labels = images, labels
+                try:
+                    remain_images, remain_labels = next(remain_iter)
+                except StopIteration:
+                    remain_iter = iter(remain_dl)
+                    remain_images, remain_labels = next(remain_iter)
+                print(f"Batch {i}: forget_labels[0]={forget_labels[0]}, remain_labels[0]={remain_labels[0]}")
+                if i == 2: break
                 torch.cuda.empty_cache()
                 #import pdb
                 #pdb.set_trace()

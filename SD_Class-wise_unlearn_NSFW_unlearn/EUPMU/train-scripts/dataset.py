@@ -197,8 +197,9 @@ def setup_ga_data(class_to_forget, batch_size, image_size, interpolation="bicubi
 
     train_set = Imagenette("train", transform=transform)
     descriptions = [f"an image of a {label}" for label in train_set.class_to_idx.keys()]
-    filtered_data = [data for data in train_set if data[1] == class_to_forget]
-    # print(len(filtered_data), train_set[0], filtered_data[0])
+    labels = train_set.dataset["label"]
+    filtered_indices = [i for i, label in enumerate(labels) if label == class_to_forget]
+    filtered_data = torch.utils.data.Subset(train_set, filtered_indices)
 
     train_dl = DataLoader(filtered_data, batch_size=batch_size, shuffle=True)
     return train_dl, descriptions
@@ -209,7 +210,9 @@ def setup_remain_data(class_to_forget, batch_size, image_size, interpolation="bi
     transform = get_transform(interpolation, image_size)
     train_set = Imagenette("train", transform=transform)
     descriptions = [f"an image of a {label}" for label in train_set.class_to_idx.keys()]
-    filtered_data = [data for data in train_set if data[1] != class_to_forget]
+    labels = train_set.dataset["label"]
+    filtered_indices = [i for i, label in enumerate(labels) if label != class_to_forget]
+    filtered_data = torch.utils.data.Subset(train_set, filtered_indices)
     train_dl = DataLoader(filtered_data, batch_size=batch_size, shuffle=True)
     return train_dl, descriptions
 
@@ -219,7 +222,9 @@ def setup_forget_data(class_to_forget, batch_size, image_size, interpolation="bi
     transform = get_transform(interpolation, image_size)
     train_set = Imagenette("train", transform=transform)
     descriptions = [f"an image of a {label}" for label in train_set.class_to_idx.keys()]
-    filtered_data = [data for data in train_set if data[1] == class_to_forget]
+    labels = train_set.dataset["label"]
+    filtered_indices = [i for i, label in enumerate(labels) if label == class_to_forget]
+    filtered_data = torch.utils.data.Subset(train_set, filtered_indices)
     train_dl = DataLoader(filtered_data, batch_size=batch_size)
     return train_dl, descriptions
 
