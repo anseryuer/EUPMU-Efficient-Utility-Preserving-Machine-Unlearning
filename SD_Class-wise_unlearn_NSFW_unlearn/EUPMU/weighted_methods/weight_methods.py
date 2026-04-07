@@ -83,10 +83,11 @@ class WeightMethod:
             **kwargs,
         )
 
+        loss.backward()
+
         if self.max_norm > 0:
             torch.nn.utils.clip_grad_norm_(shared_parameters, self.max_norm)
 
-        loss.backward()
         return loss, extra_outputs
 
     def __call__(
@@ -354,7 +355,7 @@ class EU(WeightMethod):
     def get_weighted_loss(self, losses,**kwargs,):
         self.prev_ret_loss = losses[0]
         D = losses - self.min_losses + 1e-8
-        D_log = D.log()
+        D_log = D
         D_copy = D_log.clone()
         if self.w < 0:
             D_copy[0] = D_log[0] * 0
@@ -366,8 +367,8 @@ class EU(WeightMethod):
         return loss, {"weights": self.w.detach().clone(), "logits": self.w.detach().clone()}
 
     def update(self, curr_ret_loss):
-        delta = (self.prev_ret_loss - self.min_losses[0] + 1e-8).log() - \
-                (curr_ret_loss      - self.min_losses[0] + 1e-8).log() - self.error
+        delta = (self.prev_ret_loss - self.min_losses[0] + 1e-8) - \
+                (curr_ret_loss      - self.min_losses[0] + 1e-8) - self.error
         d = delta.unsqueeze(0)
         #print("delta", delta)
         self.w_opt.zero_grad(set_to_none=False)
