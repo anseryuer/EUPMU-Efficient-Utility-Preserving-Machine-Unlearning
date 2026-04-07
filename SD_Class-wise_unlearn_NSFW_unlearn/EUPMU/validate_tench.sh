@@ -29,25 +29,29 @@ python train-scripts/random_label_eu.py \
     --wandb
 
 # Image generation
+
 echo "[2/3] Generating images..."
+
 SAVE_PATH="eval_output/${MODEL_NAME}"
 mkdir -p "$SAVE_PATH"
 
-python eval-scripts/generate-images_small_batchsize.py \
+python eval-scripts/generate-images.py \
     --model_name "$MODEL_NAME" \
     --prompts_path "$PROMPTS" \
-    --save_path "$SAVE_PATH" \
-    --num_samples 1
+    --save_path "eval_output" \
+    --num_samples 10
 
 # Eval the 2 metrics
-# echo "[3/3] Evaluating UA..."
-# python eval-scripts/imageclassify.py \
-#     --folder_path "$SAVE_PATH" \
-#     --prompts_path "$PROMPTS"
 
-# echo "[3/3] Evaluating FID..."
-# python eval-scripts/compute-fid-per-class.py \
-#     --folder_path "$SAVE_PATH" \
-#     --class_to_forget "$CLASS"
+echo "[3/3] Evaluating UA..."
+
+python eval-scripts/imageclassify.py \
+    --folder_path "$SAVE_PATH" \
+    --prompts_path "$PROMPTS"
+
+echo "[3/3] Evaluating FID..."
+python eval-scripts/compute-fid.py \
+    --folder_path "$SAVE_PATH" \
+    --class_to_forget "$CLASS"
 
 echo "Done!"
