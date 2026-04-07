@@ -32,6 +32,7 @@ investigation_logs
 temp/
 
 models/compvis-*/
+imagenette_without_label_*/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
