@@ -30,6 +30,7 @@ MANIFEST
 investigation_logs
 
 temp/
+nohup.out
 
 models/compvis-*/
 imagenette_without_label_*/
