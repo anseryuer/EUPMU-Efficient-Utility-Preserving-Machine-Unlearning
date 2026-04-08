@@ -115,7 +115,7 @@ if __name__ == "__main__":
     forget_classid=int(args.folder_path.split("class_")[-1].split("-method")[0])
     result_forgetset = merged_df[merged_df["case_number"] == forget_classid]
     forget_acc = np.mean(result_forgetset["category_top1"] == result_forgetset["class"])
-    unlearn_acc = 100-forget_acc
+    unlearn_acc = (1 - forget_acc) * 100
     print("---------------------------------------")
     print(args.folder_path)
     print("unlearn_acc:", unlearn_acc)
