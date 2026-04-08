@@ -100,7 +100,7 @@ def certain_label(
                 forget_prompts = [descriptions[label] for label in forget_labels]
 
                 pseudo_prompts = [
-                    descriptions[(int(class_to_forget) + random.randint(1,9)) % 10]
+                    descriptions[(int(class_to_forget) + 1) % 10]
                     for label in forget_labels
                 ]
                 remain_prompts = [descriptions[label] for label in remain_labels]

@@ -9,6 +9,7 @@ PROMPTS="prompts/imagenette.csv"
 
 # Array of configurations to test: "LR W_LR ERR"
 CONFIGS=(
+    "1e-05 10.0 1"
     "1e-05 10.0 0.1"
     "1e-06 10.0 1.0"
     "1e-06 5.0 0.1"
