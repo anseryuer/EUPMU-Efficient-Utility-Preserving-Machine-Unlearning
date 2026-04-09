@@ -3,19 +3,22 @@ import argparse
 
 import torch
 from dataset import setup_fid_data
-from torchmetrics.image.fid import FID
-# from torchmetrics.image.fid import FID
+from torchmetrics.image.fid import FrechetInceptionDistance
 
+import torchmetrics
+print(f"Current torchmetrics version: {torchmetrics.__version__}")
+print("!!!PLEASE make sure torchmetrics version is 1.0.0 or newer to avoid an old FID metric problem that breaks the whole thing!!!")
 
 def compute_fid(class_to_forget, path, image_size):
 
-    # fid = FID( feature=64)
-    fid = FID(feature=64)
+    fid = FrechetInceptionDistance(feature=64)
 
     real_set, fake_set = setup_fid_data(class_to_forget, path, image_size)
 
     real_images = torch.stack(real_set).to(torch.uint8).cpu()
     fake_images = torch.stack(fake_set).to(torch.uint8).cpu()
+    print("real_images.shape:", real_images.shape)
+    print("fake_images.shape:", fake_images.shape)
 
     fid.update(real_images, real=True)  # doctest: +SKIP
     fid.update(fake_images, real=False)  # doctest: +SKIP
