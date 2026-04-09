@@ -32,9 +32,11 @@ Note that this code base aims to forget one class and preserve the other 9 in th
 1. Forgetting training with EUPMU
 
     ```
-   python train-scripts/random_label_eu.py --train_method full --lr 1e-5 --epochs 5  --class_to_forget 0  --device '0' --mtl --mtl_method "eu"
+   python train-scripts/random_label_eu.py --train_method full --lr 1e-5 --alpha 1.0 --epochs 5 --class_to_forget 0 --device '0' --mtl --mtl_method "eu"
     ```
    This should create another folder in `./model`. 
+
+   `--alpha` multiplies the retain loss before EU weighting and before the EU retain-loss update. Reducing it is useful when the retain loss is consistently much larger than the forget loss.
 
    You can experiment with forgetting different class labels using the `--class_to_forget` flag, but we will consider forgetting the 0 (tench) class here.
 

@@ -6,11 +6,15 @@ set -e
 CLASS=0
 METHOD="full"
 LR="1e-05"
-W_LR="10.0"
-ERR="1.0"
+W_LR="1.0"
+ERR="0.01"
+ALPHA="1.0"
 EPOCHS=5
 PROMPTS="prompts/imagenette.csv"
 MODEL_NAME="compvis-cl-class_${CLASS}-method_${METHOD}-epoch_${EPOCHS}-lr_${LR}-mtl_eu-w_lr_${W_LR}-err_${ERR}"
+if [[ "$ALPHA" != "1.0" ]]; then
+    MODEL_NAME="${MODEL_NAME}-alpha_${ALPHA}"
+fi
 
 echo "================================================="
 echo "full 5 epoch Tench run + image generation + FID + UA"
@@ -22,6 +26,7 @@ python train-scripts/random_label_eu.py \
     --train_method "$METHOD" \
     --epochs "$EPOCHS" \
     --lr "$LR" \
+    --alpha "$ALPHA" \
     --mtl \
     --mtl_method eu \
     --w_lr "$W_LR" \
