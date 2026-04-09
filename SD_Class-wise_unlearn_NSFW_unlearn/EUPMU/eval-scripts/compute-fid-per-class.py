@@ -1,11 +1,15 @@
 import argparse
 import torch
 from dataset import setup_fid_data_per_class
-from torchmetrics.image.fid import FID
+from torchmetrics.image.fid import FrechetInceptionDistance
+
+import torchmetrics
+print(f"Current torchmetrics version: {torchmetrics.__version__}")
+print("!!!PLEASE make sure torchmetrics version is 1.0.0 or newer to avoid an old FID metric problem that breaks the whole thing!!!")
 
 def compute_fid_per_class(class_to_forget, path, image_size):
     # FID instance
-    fid = FID(feature=64)
+    fid = FrechetInceptionDistance(feature=64)
 
     avg_fid = 0
 
