@@ -23,6 +23,7 @@ def certain_label(
     batch_size,
     epochs,
     lr,
+    alpha,
     config_path,
     ckpt_path,
     mask_path,
@@ -79,6 +80,8 @@ def certain_label(
         weight_methods_parameters = extract_weight_method_parameters_from_args(args)
         weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = w_lr, error = error)
         name += f"-mtl_{args.mtl_method}-w_lr_{w_lr}-err_{error}"
+    if alpha != 1.0:
+        name += f"-alpha_{alpha}"
     # TRAINING CODE
     remain_iter = iter(remain_dl)
     for epoch in range(epochs):
@@ -112,6 +115,7 @@ def certain_label(
                     "txt": remain_prompts,
                 }
                 remain_loss = model.shared_step(remain_batch)[0]
+                scaled_remain_loss = alpha * remain_loss
 
                 # forget stage
                 forget_batch = {
@@ -154,13 +158,18 @@ def certain_label(
                 #loss.backward()
                 #print(f"forget_loss: {forget_loss.item() / batch_size}, remain_loss: {remain_loss.item() / batch_size}")
                 loss, _ = weight_method.backward(
-                    losses=torch.stack([remain_loss, forget_loss]),
+                    losses=torch.stack([scaled_remain_loss, forget_loss]),
                     shared_parameters=list(model.model.diffusion_model.parameters()),
                 )
                 torch.cuda.empty_cache()
                 losses.append(loss.item() / batch_size)
                 if use_wandb:
-                    wandb.log({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size})
+                    wandb.log({
+                        "loss": loss.item() / batch_size,
+                        "remain_loss": remain_loss.item() / batch_size,
+                        "scaled_remain_loss": scaled_remain_loss.item() / batch_size,
+                        "forget_loss": forget_loss.item() / batch_size,
+                    })
 
                 if mask_path:
                     print("Applying mask")
@@ -186,13 +195,25 @@ def certain_label(
 
                         new_remain_loss = criteria(remain_out, noise)"""
                         new_remain_loss = model.shared_step(remain_batch)[0]
-                        weight_method.method.update(new_remain_loss.detach())
+                        scaled_new_remain_loss = alpha * new_remain_loss
+                        weight_method.method.update(scaled_new_remain_loss.detach())
                         torch.cuda.empty_cache()
                         if use_wandb:
-                            wandb.log({"EU Weight": weight_method.method.w, "EU update Loss": new_remain_loss.item() / batch_size, "EU weight grad": weight_method.method.w.grad})
+                            wandb.log({
+                                "EU Weight": weight_method.method.w,
+                                "EU update Loss": new_remain_loss.item() / batch_size,
+                                "EU scaled update Loss": scaled_new_remain_loss.item() / batch_size,
+                                "EU weight grad": weight_method.method.w.grad,
+                            })
 
                 time.set_description("Epo-ch %i" % epoch)
-                time.set_postfix({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size, "eu_weight": weight_method.method.w.detach().cpu().numpy()[0]})
+                time.set_postfix({
+                    "loss": loss.item() / batch_size,
+                    "remain_loss": remain_loss.item() / batch_size,
+                    "scaled_remain_loss": scaled_remain_loss.item() / batch_size,
+                    "forget_loss": forget_loss.item() / batch_size,
+                    "eu_weight": weight_method.method.w.detach().cpu().numpy()[0],
+                })
                 sleep(0.1)
                 time.update(1)
 
@@ -293,6 +314,13 @@ if __name__ == "__main__":
         default=1e-5,
     )
     parser.add_argument(
+        "--alpha",
+        help="extra multiplier applied to the retain loss before EU weighting",
+        type=float,
+        required=False,
+        default=1.0,
+    )
+    parser.add_argument(
         "--ckpt_path",
         help="ckpt path for stable diffusion v1-4",
         type=str,
@@ -332,7 +360,7 @@ if __name__ == "__main__":
         help="image size used to train",
         type=int,
         required=False,
-        default=128,
+        default=512,
     )
     parser.add_argument(
         "--ddim_steps",
@@ -369,6 +397,7 @@ if __name__ == "__main__":
     batch_size = args.batch_size
     epochs = args.epochs
     lr = args.lr
+    alpha = args.alpha
     ckpt_path = args.ckpt_path
     mask_path = args.mask_path
     config_path = args.config_path
@@ -383,6 +412,7 @@ if __name__ == "__main__":
         batch_size,
         epochs,
         lr,
+        alpha,
         config_path,
         ckpt_path,
         mask_path,

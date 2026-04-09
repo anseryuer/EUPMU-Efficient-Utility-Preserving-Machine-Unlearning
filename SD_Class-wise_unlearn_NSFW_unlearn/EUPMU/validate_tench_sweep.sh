@@ -7,22 +7,21 @@ METHOD="full"
 EPOCHS=5
 PROMPTS="prompts/imagenette.csv"
 
-# Array of configurations to test: "LR W_LR ERR"
+# Array of configurations to test: "LR W_LR ERR ALPHA"
 CONFIGS=(
-    "1e-05 10.0 1"
-    "1e-05 10.0 0.1"
-    "1e-06 10.0 1.0"
-    "1e-06 5.0 0.1"
-    "1e-06 1.0 0.05"
+    "1e-05 10.0 1.0 0.01"cond
 )
 
 for CONFIG in "${CONFIGS[@]}"; do
-    read -r LR W_LR ERR <<< "$CONFIG"
+    read -r LR W_LR ERR ALPHA <<< "$CONFIG"
 
     MODEL_NAME="compvis-cl-class_${CLASS}-method_${METHOD}-epoch_${EPOCHS}-lr_${LR}-mtl_eu-w_lr_${W_LR}-err_${ERR}"
+    if [[ "$ALPHA" != "1.0" ]]; then
+        MODEL_NAME="${MODEL_NAME}-alpha_${ALPHA}"
+    fi
 
     echo "================================================="
-    echo "Running config: LR=$LR, W_LR=$W_LR, ERR=$ERR"
+    echo "Running config: LR=$LR, W_LR=$W_LR, ERR=$ERR, ALPHA=$ALPHA"
     echo "================================================="
     # Train for 5 epochs
     echo "[1/3] Training..."
@@ -31,6 +30,7 @@ for CONFIG in "${CONFIGS[@]}"; do
         --train_method "$METHOD" \
         --epochs "$EPOCHS" \
         --lr "$LR" \
+        --alpha "$ALPHA" \
         --mtl \
         --mtl_method eu \
         --w_lr "$W_LR" \
@@ -66,7 +66,7 @@ for CONFIG in "${CONFIGS[@]}"; do
     echo "Done!"
 
     echo "================================================="
-    echo "Finished config: LR=$LR, W_LR=$W_LR, ERR=$ERR"
+    echo "Finished config: LR=$LR, W_LR=$W_LR, ERR=$ERR, ALPHA=$ALPHA"
     echo "================================================="
     echo ""
 done

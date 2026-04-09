@@ -17,7 +17,7 @@ try:
     import wandb
 except:
     pass
-EPS = 1e-8 # for numerical stability
+EPS = 1e-10 # for numerical stability
 def cleanup():
     torch.cuda.empty_cache()
     gc.collect()
