@@ -4,14 +4,12 @@
 # Base parameters
 CLASS=0
 METHOD="full"
-EPOCHS=2
+EPOCHS=3
 PROMPTS="prompts/imagenette.csv"
 
 # Array of configurations to test: "LR W_LR ERR ALPHA"
-    # "1e-05 10.0 1.0 0.01" 0 2.88
-    # "1e-05 10.0 0.5 0.01" 0 2.37
-    # "5e-06 10.0 1.0 0.01" 0 3.37
-    # "1e-05 10.0 0.1 0.01" 0 4.04
+    # "1e-05 10.0 1.0 0.01" 0 1.4626
+    # "1e-05 10.0 0.5 0.01" 0 1.08
 CONFIGS=(
     "1e-05 5 0.5 0.01"
 )
