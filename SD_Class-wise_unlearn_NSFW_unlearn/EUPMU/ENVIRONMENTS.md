@@ -32,7 +32,24 @@ Runtime checks that passed:
 
 Setup reference:
 
-- [scripts/setup_eupmu_h200_env.sh](/home/tianbai2/EUPMU_reproduce_fix/SD_Class-wise_unlearn_NSFW_unlearn/EUPMU/scripts/setup_eupmu_h200_env.sh)
+- [scripts/setup_eupmu_env.sh](/home/tianbai/unlearning/EUPMU-Efficient-Utility-Preserving-Machine-Unlearning/SD_Class-wise_unlearn_NSFW_unlearn/EUPMU/scripts/setup_eupmu_env.sh)
+
+If `torch` fails to import with an error mentioning
+`__nvJitLinkAddData_12_1`, repair the env by reinstalling the matching wheel:
+
+```bash
+conda run -n eupmu python -m pip install --force-reinstall \
+  nvidia-nvjitlink-cu12==12.1.105
+```
+
+If the import error still appears after that, your shell is likely exporting a
+system CUDA path first. This machine currently has `/usr/local/cuda-12.0` in
+`LD_LIBRARY_PATH`, which overrides the env's CUDA 12.1 wheel libraries. Run
+EUPMU commands with a clean library path:
+
+```bash
+conda run -n eupmu env -u LD_LIBRARY_PATH python eval-scripts/save_base_dataset.py
+```
 
 ## 2. FID only: `fid-eval`
 
