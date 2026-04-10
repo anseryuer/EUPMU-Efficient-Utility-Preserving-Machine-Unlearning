@@ -4,18 +4,22 @@
 # Base parameters
 CLASS=0
 METHOD="full"
-EPOCHS=3
+DEFAULT_EPOCHS=3
 PROMPTS="prompts/imagenette.csv"
 
-# Array of configurations to test: "LR W_LR ERR ALPHA"
-    # "1e-05 10.0 1.0 0.01" 0 1.4626
-    # "1e-05 10.0 0.5 0.01" 0 1.08
+# Array of configurations to test: "LR W_LR ERR ALPHA [EPOCHS]"
+    # "1e-05 10.0 1.0 0.01 5" 0 1.4626
+    # "1e-05 10.0 0.5 0.01 5" 0 1.08
 CONFIGS=(
-    "1e-05 5 0.5 0.01"
+    "1e-05 10.0 0.5 0.01 3"
+    "1e-05 10.0 0.3 0.01 5"
+    "1e-05 10.0 0.3 0.01 3"
+    "1e-05 10.0 0.8 0.01 5"
 )
 
 for CONFIG in "${CONFIGS[@]}"; do
-    read -r LR W_LR ERR ALPHA <<< "$CONFIG"
+    read -r LR W_LR ERR ALPHA EPOCHS <<< "$CONFIG"
+    EPOCHS="${EPOCHS:-$DEFAULT_EPOCHS}"
 
     MODEL_NAME="compvis-cl-class_${CLASS}-method_${METHOD}-epoch_${EPOCHS}-lr_${LR}-mtl_eu-w_lr_${W_LR}-err_${ERR}"
     if [[ "$ALPHA" != "1.0" ]]; then
@@ -23,9 +27,9 @@ for CONFIG in "${CONFIGS[@]}"; do
     fi
 
     echo "================================================="
-    echo "Running config: LR=$LR, W_LR=$W_LR, ERR=$ERR, ALPHA=$ALPHA"
+    echo "Running config: LR=$LR, W_LR=$W_LR, ERR=$ERR, ALPHA=$ALPHA, EPOCHS=$EPOCHS"
     echo "================================================="
-    # Train for 5 epochs
+    # Train for the configured number of epochs
     echo "[1/3] Training..."
     python train-scripts/random_label_eu.py \
         --class_to_forget "$CLASS" \
@@ -68,7 +72,7 @@ for CONFIG in "${CONFIGS[@]}"; do
     echo "Done!"
 
     echo "================================================="
-    echo "Finished config: LR=$LR, W_LR=$W_LR, ERR=$ERR, ALPHA=$ALPHA"
+    echo "Finished config: LR=$LR, W_LR=$W_LR, ERR=$ERR, ALPHA=$ALPHA, EPOCHS=$EPOCHS"
     echo "================================================="
     echo ""
 done
