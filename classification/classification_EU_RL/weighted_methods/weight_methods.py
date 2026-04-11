@@ -775,12 +775,13 @@ class OMDTCHBase(WeightMethod):
             raise ValueError("eta must be positive for OMD-TCH")
         if update_rule not in {"eg", "pgd"}:
             raise ValueError("update_rule must be 'eg' or 'pgd'")
-        if any(float(v) != 0.0 for v in reference_point):
-            raise ValueError("OMD-TCH in this repo follows the paper and requires zero reference_point.")
+        #if any(float(v) != 0.0 for v in reference_point):
+        #    raise ValueError("OMD-TCH in this repo follows the paper and requires zero reference_point.")
         if float(rho) != 0.0:
             raise ValueError("OMD-TCH in this repo follows the paper and does not use rho augmentation.")
 
         self.task_weights = torch.tensor(task_weights, dtype=torch.float32, device=device)
+        self.reference_point = torch.tensor(reference_point, dtype=torch.float32, device=device)
         self.eta = eta
         self.update_rule = update_rule
         self.adaptive = adaptive
@@ -803,8 +804,9 @@ class OMDTCHBase(WeightMethod):
 
     def _weighted_losses(self, losses):
         task_weights = self.task_weights.to(losses.device, losses.dtype)
-        weighted_losses = task_weights * losses
-        return task_weights, weighted_losses
+        reference_point = self.reference_point.to(losses.device, losses.dtype)
+        weighted_losses = task_weights * (losses - reference_point)
+        return task_weights, weighted_losses.clamp_min(0.0)
 
     def _project_simplex(self, values: torch.Tensor) -> torch.Tensor:
         if values.dim() != 1:
@@ -874,6 +876,7 @@ class OMDTCHBase(WeightMethod):
         extra_outputs = {
             "task_weights": task_weights.detach().clone(),
             "weighted_losses": weighted_losses.detach().clone(),
+            "reference_point": self.reference_point.detach().clone(),
             "omd_weights": simplex_weights.detach().clone(),
             "updated_omd_weights": updated_weights.detach().clone(),
             "eta": self.eta,

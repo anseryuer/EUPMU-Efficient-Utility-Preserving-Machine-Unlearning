@@ -155,6 +155,19 @@ def RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, device
                         wandb.log({"EU_weight": weight_method.method.w})
                         wandb.log({"retain_loss": loss_retain})
                         wandb.log({"forget_loss": loss_forget})
+                
+                # log OMD-TCH simplex weights
+                if extra_outputs is not None and "updated_omd_weights" in extra_outputs:
+                    with torch.no_grad():
+                        wandb.log({
+                            "omd/weight_retain": extra_outputs["updated_omd_weights"][0].item(),
+                            "omd/weight_forget": extra_outputs["updated_omd_weights"][1].item()
+                        })
+                        wandb.log({
+                            "retain_loss": loss_retain.item(),
+                            "forget_loss": loss_forget.item()
+                        })
+
 
 
             elif args.retainwithAllParamUpdate:

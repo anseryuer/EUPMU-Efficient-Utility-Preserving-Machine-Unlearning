@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import utils
 
-from .impl import iterative_unlearn
+from .impl import iterative_unlearn, update_omd_tch_average, update_ada_omd_marked_state
 import wandb
 import random
 from torch.utils.data import Dataset, Subset
@@ -32,7 +32,7 @@ def GA_RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, dev
                 print(forget_dataset.dataset.targets[:10])
         else:
             print("not using random targets")
-            forget_dataset.labels = np.random.randint(0, args.num_classes, forget_dataset.labels.shape)
+            # forget_dataset.labels = np.random.randint(0, args.num_classes, forget_dataset.labels.shape)
 
         retain_dataset = retain_loader.dataset
 
@@ -98,25 +98,51 @@ def GA_RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, dev
                 output_clean = model(image)
 
             if args.mtl:
+                optimizer.zero_grad()
                 retain_indexes = [index for index, value in enumerate(target_label) if value == "retain"]
                 forget_indexes = [index for index, value in enumerate(target_label) if value == "forget"]
-                loss_retain = criterion(output_clean[retain_indexes], target[retain_indexes])*(len(retain_indexes)/len(target_label))
-                loss_forget = - criterion(output_clean[forget_indexes], target[forget_indexes])*(len(forget_indexes)/len(target_label))
+                loss_retain = criterion(output_clean[retain_indexes], target[retain_indexes])# *(len(retain_indexes)/len(target_label))
+                loss_forget = - criterion(output_clean[forget_indexes], target[forget_indexes])# *(len(forget_indexes)/len(target_label))
+
+                shared_parameters = [param for param in model.parameters() if param.requires_grad]
+                if hasattr(weight_method.method, "set_task_gradients"):
+                    task_grads = []
+                    for task_loss in (loss_retain, loss_forget):
+                        grads = torch.autograd.grad(
+                            task_loss,
+                            shared_parameters,
+                            retain_graph=True,
+                            allow_unused=True,
+                        )
+                        flat_grads = []
+                        for param, grad in zip(shared_parameters, grads):
+                            if grad is None:
+                                flat_grads.append(torch.zeros_like(param).reshape(-1))
+                            else:
+                                flat_grads.append(grad.detach().reshape(-1))
+                        task_grads.append(torch.cat(flat_grads))
+                    weight_method.method.set_task_gradients(torch.stack(task_grads, dim=0))
+
+                extra_kwargs = {}
+                if args.mtl_method == "gdr_gma":
+                    extra_kwargs = {"bank": memory_bank, "epoch": epoch, "n_loss": loss_retain}
 
                 loss, extra_outputs = weight_method.backward(
                     losses=torch.stack([loss_retain, loss_forget]),
                     shared_parameters=list(model.parameters()),
-                    # Pass the required kwargs
-                    bank=memory_bank,
-                    epoch=epoch,
-                    n_loss=loss_retain
+                    **extra_kwargs,
                 )
+
 
                 if mask:
                     for name, param in model.named_parameters():
                         if param.grad is not None:
                             param.grad *= mask[name]
 
+                update_ada_omd_marked_state(args, model, [loss_retain.detach(), loss_forget.detach()])
+                # The OMD-TCH paper averages optimization iterates over rounds; we therefore
+                # snapshot the current iterate before each optimizer step.
+                update_omd_tch_average(args, model)
                 optimizer.step()
 
                 if ("famo" in args.mtl_method):
@@ -140,6 +166,23 @@ def GA_RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, dev
                                     len(retain_indexes) / len(target_label))
                         weight_method.method.update(loss_retain.detach())
                         # wandb.log({"EU_weight": weight_method.method.w})
+
+                # log OMD-TCH simplex weights
+                if extra_outputs is not None and "updated_omd_weights" in extra_outputs:
+                    with torch.no_grad():
+                        wandb.log({
+                            "omd/weight_retain": extra_outputs["updated_omd_weights"][0].item(),
+                            "omd/weight_forget": extra_outputs["updated_omd_weights"][1].item()
+                        })
+                        wandb.log({
+                            "retain_loss": loss_retain.item(),
+                            "forget_loss": loss_forget.item()
+                        })
+                        if "reference_point" in extra_outputs:
+                            wandb.log({
+                                "omd/ref_retain": extra_outputs["reference_point"][0].item(),
+                                "omd/ref_forget": extra_outputs["reference_point"][1].item(),
+                            })
 
 
             elif args.retainwithAllParamUpdate:

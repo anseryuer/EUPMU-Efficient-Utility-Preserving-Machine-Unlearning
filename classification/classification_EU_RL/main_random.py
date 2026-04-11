@@ -286,21 +286,21 @@ def main(args):
     #     test_len = len(test_loader.dataset)
     #     retain_len = len(retain_dataset)
     #     num = test_len // 2
-    #
+    
     #     utils.dataset_convert_to_test(retain_dataset, args)
     #     utils.dataset_convert_to_test(forget_loader, args)
     #     utils.dataset_convert_to_test(test_loader, args)
-    #
+    
     #     shadow_train = torch.utils.data.Subset(retain_dataset, list(range(num)))
     #     target_train = torch.utils.data.Subset(retain_dataset, list(range(num, retain_len)))
     #     shadow_test = torch.utils.data.Subset(test_loader.dataset, list(range(num)))
     #     target_test = torch.utils.data.Subset(test_loader.dataset, list(range(num, test_len)))
-    #
+    
     #     shadow_train_loader = torch.utils.data.DataLoader(shadow_train, batch_size=args.batch_size, shuffle=False)
     #     shadow_test_loader = torch.utils.data.DataLoader(shadow_test, batch_size=args.batch_size, shuffle=False)
     #     target_train_loader = torch.utils.data.DataLoader(target_train, batch_size=args.batch_size, shuffle=False)
     #     target_test_loader = torch.utils.data.DataLoader(target_test, batch_size=args.batch_size, shuffle=False)
-    #
+    
     #     evaluation_result["SVC_MIA_training_privacy"] = evaluation.SVC_MIA(
     #         shadow_train=shadow_train_loader,
     #         shadow_test=shadow_test_loader,
