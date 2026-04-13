@@ -17,7 +17,7 @@ try:
     import wandb
 except:
     pass
-EPS = 1e-8 # for numerical stability
+EPS = 1e-10 # for numerical stability
 def cleanup():
     torch.cuda.empty_cache()
     gc.collect()
@@ -83,10 +83,11 @@ class WeightMethod:
             **kwargs,
         )
 
+        loss.backward()
+
         if self.max_norm > 0:
             torch.nn.utils.clip_grad_norm_(shared_parameters, self.max_norm)
 
-        loss.backward()
         return loss, extra_outputs
 
     def __call__(
@@ -341,20 +342,12 @@ class EU(WeightMethod):
         super().__init__(2, device=device)
         self.min_losses = torch.zeros(2).to(device)
         self.w = torch.tensor([0.], device=device, requires_grad=True)
-        try:
-            w_lr = wandb.config.weight_learning_rate_eu
-        except:
-            print("No wandb weight learning rate found")
-            pass
         print("w_lr", w_lr, "error", error)
         self.w_opt = torch.optim.Adam([self.w], lr=w_lr, weight_decay=gamma)
         self.max_norm = max_norm
         self.n_tasks = 2
         self.device = device
-        try:
-            self.error = wandb.config.error_eu
-        except:
-            self.error = error
+        self.error = error
 
     def set_min_losses(self, losses):
         self.min_losses = losses
@@ -362,7 +355,7 @@ class EU(WeightMethod):
     def get_weighted_loss(self, losses,**kwargs,):
         self.prev_ret_loss = losses[0]
         D = losses - self.min_losses + 1e-8
-        D_log = D.log()
+        D_log = D
         D_copy = D_log.clone()
         if self.w < 0:
             D_copy[0] = D_log[0] * 0
@@ -374,8 +367,8 @@ class EU(WeightMethod):
         return loss, {"weights": self.w.detach().clone(), "logits": self.w.detach().clone()}
 
     def update(self, curr_ret_loss):
-        delta = (self.prev_ret_loss - self.min_losses[0] + 1e-8).log() - \
-                (curr_ret_loss      - self.min_losses[0] + 1e-8).log() - self.error
+        delta = (self.prev_ret_loss - self.min_losses[0] + 1e-8) - \
+                (curr_ret_loss      - self.min_losses[0] + 1e-8) - self.error
         d = delta.unsqueeze(0)
         #print("delta", delta)
         self.w_opt.zero_grad(set_to_none=False)

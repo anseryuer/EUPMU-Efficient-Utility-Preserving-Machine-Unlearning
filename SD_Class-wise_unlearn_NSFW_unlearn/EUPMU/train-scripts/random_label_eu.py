@@ -14,27 +14,16 @@ from weighted_methods.weight_methods import WeightMethods
 
 import random
 
-import wandb
-wandb.init(project="SD_unlearning")
-try:
-    # Retrieve hyperparameters from the sweep configuration
-    weight_learning_rate_eu = wandb.config.weight_learning_rate_eu
-    error_eu = wandb.config.error_eu
-except:
-    # Set default hyperparameters
-    weight_learning_rate_eu = 3
-    error_eu = 0
-print(f"EU Weight learning rate: {weight_learning_rate_eu}, EU Error: {error_eu}")
 # EU hyperparameters
 
 
 def certain_label(
     class_to_forget,
     train_method,
-    alpha,
     batch_size,
     epochs,
     lr,
+    alpha,
     config_path,
     ckpt_path,
     mask_path,
@@ -42,7 +31,12 @@ def certain_label(
     device,
     image_size=512,
     ddim_steps=50,
+    w_lr=3.0,
+    error=0.0,
+    use_wandb=False,
 ):
+    if use_wandb:
+        import wandb
     # MODEL TRAINING SETUP
     model = setup_model(config_path, ckpt_path, device)
     criteria = torch.nn.MSELoss()
@@ -77,30 +71,39 @@ def certain_label(
     if mask_path:
         mask = torch.load(mask_path)
 
-        name = f"compvis-cl-mask-class_{str(class_to_forget)}-method_{train_method}-alpha_{alpha}-epoch_{epochs}-lr_{lr}"
+        name = f"compvis-cl-mask-class_{str(class_to_forget)}-method_{train_method}-epoch_{epochs}-lr_{lr}"
     else:
-        name = f"compvis-cl-class_{str(class_to_forget)}-method_{train_method}-alpha_{alpha}-epoch_{epochs}-lr_{lr}-random_{random.randint(0, 1000)}"
+        name = f"compvis-cl-class_{str(class_to_forget)}-method_{train_method}-epoch_{epochs}-lr_{lr}"
     if args.mtl:
         assert args.mtl_method == "eu" # Only implemented for efficient unlearning
         # weight method
         weight_methods_parameters = extract_weight_method_parameters_from_args(args)
-        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = weight_learning_rate_eu,error = error_eu)
-        name += f"-mtl_{args.mtl_method}-w_lr_{weight_learning_rate_eu}-err_{error_eu}"
+        weight_method = WeightMethods(args.mtl_method, n_tasks=2, device=device, w_lr = w_lr, error = error)
+        name += f"-mtl_{args.mtl_method}-w_lr_{w_lr}-err_{error}"
+    if alpha != 1.0:
+        name += f"-alpha_{alpha}"
     # TRAINING CODE
+    remain_iter = iter(remain_dl)
     for epoch in range(epochs):
         with tqdm(total=len(forget_dl)) as time:
             for i, (images, labels) in enumerate(forget_dl):
                 optimizer.zero_grad()
 
-                forget_images, forget_labels = next(iter(forget_dl))
-                remain_images, remain_labels = next(iter(remain_dl))
+                forget_images, forget_labels = images, labels
+                try:
+                    remain_images, remain_labels = next(remain_iter)
+                except StopIteration:
+                    remain_iter = iter(remain_dl)
+                    remain_images, remain_labels = next(remain_iter)
+                # print(f"Batch {i}: forget_labels[0]={forget_labels[0]}, remain_labels[0]={remain_labels[0]}")
+                # if i == 2: break
                 torch.cuda.empty_cache()
                 #import pdb
                 #pdb.set_trace()
                 forget_prompts = [descriptions[label] for label in forget_labels]
 
                 pseudo_prompts = [
-                    descriptions[(int(class_to_forget) + random.randint(1,9)) % 10]
+                    descriptions[(int(class_to_forget) + 1) % 10]
                     for label in forget_labels
                 ]
                 remain_prompts = [descriptions[label] for label in remain_labels]
@@ -112,6 +115,7 @@ def certain_label(
                     "txt": remain_prompts,
                 }
                 remain_loss = model.shared_step(remain_batch)[0]
+                scaled_remain_loss = alpha * remain_loss
 
                 # forget stage
                 forget_batch = {
@@ -148,19 +152,24 @@ def certain_label(
                 forget_loss = criteria(forget_out, pseudo_out)
 
                 # total loss
-                remain_loss_alpha = alpha * remain_loss
                 torch.cuda.empty_cache()
 
-                #loss = forget_loss + alpha * remain_loss
+                #loss = forget_loss + remain_loss
                 #loss.backward()
                 #print(f"forget_loss: {forget_loss.item() / batch_size}, remain_loss: {remain_loss.item() / batch_size}")
                 loss, _ = weight_method.backward(
-                    losses=torch.stack([remain_loss_alpha, forget_loss]),
+                    losses=torch.stack([scaled_remain_loss, forget_loss]),
                     shared_parameters=list(model.model.diffusion_model.parameters()),
                 )
                 torch.cuda.empty_cache()
                 losses.append(loss.item() / batch_size)
-                wandb.log({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size})
+                if use_wandb:
+                    wandb.log({
+                        "loss": loss.item() / batch_size,
+                        "remain_loss": remain_loss.item() / batch_size,
+                        "scaled_remain_loss": scaled_remain_loss.item() / batch_size,
+                        "forget_loss": forget_loss.item() / batch_size,
+                    })
 
                 if mask_path:
                     print("Applying mask")
@@ -186,12 +195,25 @@ def certain_label(
 
                         new_remain_loss = criteria(remain_out, noise)"""
                         new_remain_loss = model.shared_step(remain_batch)[0]
-                        weight_method.method.update(new_remain_loss.detach())
+                        scaled_new_remain_loss = alpha * new_remain_loss
+                        weight_method.method.update(scaled_new_remain_loss.detach())
                         torch.cuda.empty_cache()
-                        wandb.log({"EU Weight": weight_method.method.w, "EU update Loss": new_remain_loss.item() / batch_size, "EU weight grad": weight_method.method.w.grad})
+                        if use_wandb:
+                            wandb.log({
+                                "EU Weight": weight_method.method.w,
+                                "EU update Loss": new_remain_loss.item() / batch_size,
+                                "EU scaled update Loss": scaled_new_remain_loss.item() / batch_size,
+                                "EU weight grad": weight_method.method.w.grad,
+                            })
 
                 time.set_description("Epo-ch %i" % epoch)
-                time.set_postfix({"loss": loss.item() / batch_size, "remain_loss": remain_loss.item() / batch_size, "forget_loss": forget_loss.item() / batch_size, "eu_weight": weight_method.method.w.detach().cpu().numpy()[0]})
+                time.set_postfix({
+                    "loss": loss.item() / batch_size,
+                    "remain_loss": remain_loss.item() / batch_size,
+                    "scaled_remain_loss": scaled_remain_loss.item() / batch_size,
+                    "forget_loss": forget_loss.item() / batch_size,
+                    "eu_weight": weight_method.method.w.detach().cpu().numpy()[0],
+                })
                 sleep(0.1)
                 time.update(1)
 
@@ -275,13 +297,6 @@ if __name__ == "__main__":
         "--train_method", help="method of training", type=str, required=True
     )
     parser.add_argument(
-        "--alpha",
-        help="guidance of start image used to train",
-        type=float,
-        required=False,
-        default=0.1,
-    )
-    parser.add_argument(
         "--batch_size",
         help="batch_size used to train",
         type=int,
@@ -297,6 +312,13 @@ if __name__ == "__main__":
         type=float,
         required=False,
         default=1e-5,
+    )
+    parser.add_argument(
+        "--alpha",
+        help="extra multiplier applied to the retain loss before EU weighting",
+        type=float,
+        required=False,
+        default=1.0,
     )
     parser.add_argument(
         "--ckpt_path",
@@ -338,7 +360,7 @@ if __name__ == "__main__":
         help="image size used to train",
         type=int,
         required=False,
-        default=128,
+        default=512,
     )
     parser.add_argument(
         "--ddim_steps",
@@ -349,16 +371,33 @@ if __name__ == "__main__":
     )
     parser.add_argument("--mtl", action="store_true", default=False, help="")
     parser.add_argument("--mtl_method", type=str, default=None, help="")
+    parser.add_argument("--seed", type=int, default=42, help="random seed for execution")
+    parser.add_argument("--wandb", action="store_true", help="enable wandb logging")
+    parser.add_argument("--w_lr", type=float, default=3.0, help="eu weight learning rate")
+    parser.add_argument("--error", type=float, default=0.5, help="eu error")
     args = parser.parse_args()
+
+    # Set seeds
+    if args.seed is not None:
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+
+    if args.wandb:
+        import wandb
+        wandb.init(project="SD_unlearning")
 
     # classes = [int(d) for d in args.classes.split(',')]
     classes = int(args.class_to_forget)
     print(classes)
     train_method = args.train_method
-    alpha = args.alpha
     batch_size = args.batch_size
     epochs = args.epochs
     lr = args.lr
+    alpha = args.alpha
     ckpt_path = args.ckpt_path
     mask_path = args.mask_path
     config_path = args.config_path
@@ -370,10 +409,10 @@ if __name__ == "__main__":
     certain_label(
         classes,
         train_method,
-        alpha,
         batch_size,
         epochs,
         lr,
+        alpha,
         config_path,
         ckpt_path,
         mask_path,
@@ -381,5 +420,10 @@ if __name__ == "__main__":
         device,
         image_size,
         ddim_steps,
+        args.w_lr,
+        args.error,
+        args.wandb,
     )
-wandb.finish()
+    if args.wandb:
+        import wandb
+        wandb.finish()
