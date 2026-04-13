@@ -1,4 +1,11 @@
 # EUPMU for SD class-wise image forgetting
+
+# Note: This document is outdated and needs further update. I apologize for the mess.
+
+For now you can run `./scripts/setup_eupmu_env.sh` and `./SD_Class-wise_unlearn_NSFW_unlearn/EUPMU/unlearning_all_classes_eu.sh` to do the unlearning.
+
+# The old document starts here. Will be updated.
+
 This is the code base for EUPMU for unlearning class-wise image for stable diffusion. The code structure of this project is adapted from [ESD](https://github.com/rohitgandikota/erasing/tree/main) codebase.
 
 Note that this code base aims to forget one class and preserve the other 9 in the imagenette 10-class image dataset, different from the 
