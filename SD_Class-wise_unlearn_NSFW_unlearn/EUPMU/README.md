@@ -2,7 +2,7 @@
 
 # Note: This document is outdated and needs further update. I apologize for the mess.
 
-For now you can run `./scripts/setup_eupmu_env.sh` and `./SD_Class-wise_unlearn_NSFW_unlearn/EUPMU/unlearning_all_classes_eu.sh` to do the unlearning.
+For now you can run `./scripts/setup_eupmu_env.sh` and `./SD_Class-wise_unlearn_NSFW_unlearn/EUPMU/unlearning_all_classes_eu.sh` to do the unlearning/image generation/evaluation of UA and FID.
 
 # The old document starts here. Will be updated.
 
