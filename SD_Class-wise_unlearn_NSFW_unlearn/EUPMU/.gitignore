@@ -30,7 +30,7 @@ MANIFEST
 investigation_logs
 
 temp/
-nohup.out
+nohup*.out
 
 models/compvis-*/
 imagenette_without_label_*/
@@ -45,6 +45,8 @@ eval_output/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
+
+settings.json
 
 # Unit test / coverage reports
 htmlcov/

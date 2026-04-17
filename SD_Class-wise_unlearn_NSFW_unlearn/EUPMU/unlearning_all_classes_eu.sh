@@ -3,12 +3,12 @@ set -euo pipefail
 
 TRAIN_ENV="${TRAIN_ENV:-eupmu-h200}"
 FID_ENV="${FID_ENV:-fid-eval}"
-
+# 1e-05 10.0 0.3 0.01 3
 METHOD="full"
-EPOCHS=5
+EPOCHS=3
 LR="1e-05"
 W_LR="10.0"
-ERR="0.5"
+ERR="0.15"
 ALPHA="0.01"
 PROMPTS="prompts/imagenette.csv"
 SAVE_ROOT="eval_output"
@@ -19,7 +19,7 @@ NUM_SAMPLES=10
 
 source /opt/conda/etc/profile.d/conda.sh
 
-for CLASS in {1..9}; do
+for CLASS in {1,7}; do
     MODEL_NAME="compvis-cl-class_${CLASS}-method_${METHOD}-epoch_${EPOCHS}-lr_${LR}-mtl_eu-w_lr_${W_LR}-err_${ERR}"
     if [[ "${ALPHA}" != "1.0" ]]; then
         MODEL_NAME="${MODEL_NAME}-alpha_${ALPHA}"
