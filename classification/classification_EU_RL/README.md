@@ -9,8 +9,12 @@ conda create -n clsfc python=3.9 -y
 conda activate clsfc
 pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
+```
+You can also install google genai to use the autotuning function for EUPMU, not a part of the paper but a useful tool I make for myself.
+```
 pip install google-genai
 ```
+
 ## Training from scratch
 
 In train_scripts there are scripts to train models from scratch, as well as some other training scripts.
