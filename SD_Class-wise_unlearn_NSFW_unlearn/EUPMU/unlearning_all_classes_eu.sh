@@ -3,7 +3,7 @@ set -euo pipefail
 
 TRAIN_ENV="${TRAIN_ENV:-eupmu-h200}"
 FID_ENV="${FID_ENV:-fid-eval}"
-
+# 1e-05 10.0 0.3 0.01 3
 METHOD="full"
 EPOCHS=3
 LR="1e-05"

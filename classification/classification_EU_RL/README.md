@@ -9,8 +9,12 @@ conda create -n clsfc python=3.9 -y
 conda activate clsfc
 pip install torch==2.1.0 torchvision==0.16.0 torchaudio==2.1.0 --index-url https://download.pytorch.org/whl/cu121
 pip install -r requirements.txt
+```
+You can also install google genai to use the autotuning function for EUPMU, not a part of the paper but a useful tool I make for myself.
+```
 pip install google-genai
 ```
+
 ## Training from scratch
 
 In train_scripts there are scripts to train models from scratch, as well as some other training scripts.
@@ -42,8 +46,7 @@ python -u main_forget.py --arch resnet18 --dataset cifar10 --unlearn retrain --u
 As different tasks and datasets may require different hyperparameters, we provide some recommended hyperparameters for EUPMU as for ResNet18 on CIFAR10 unlearning. With adjusting the unlearn_lr, and eu_error you can explore the pareto front of the trade-off between unlearning effectiveness and model utility.
 
 ```
-python -u main_random.py --arch resnet18 --dataset cifar10 --unlearn RL --unlearn_epochs "5" --unlearn_lr 5e-3 --class_to_replace 0  --mask pretrained_models/resnet18/cifar10/model_SA_best.pth.tar --save_dir output --gpu "0" --mtl --mtl_method eu 
---eu_w_lr 1 --eu_error 0.05 --wandb_project cls --wandb_entity clswise_unl
+python -u main_random.py --arch resnet18 --dataset cifar10 --unlearn RL --unlearn_epochs "5" --unlearn_lr 5e-3 --class_to_replace 0  --mask pretrained_models/resnet18/cifar10/model_SA_best.pth.tar --save_dir output --gpu "0" --mtl --mtl_method eu --eu_w_lr 1 --eu_error 0.05 --wandb_project cls --wandb_entity clswise_unl
 ```
 
 ### FT
