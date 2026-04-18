@@ -16,7 +16,7 @@ dependencies:
   - cuda-nvtx=12.1.105=0
   - cuda-opencl=12.9.19=0
   - cuda-runtime=12.1.0=0
-  - cuda-version=12.9=3
+  - cuda-version=12.1=0
   - dav1d=1.2.1=hd590300_0
   - filelock=3.25.2=pyhd8ed1ab_0
   - giflib=5.2.2=hd590300_0
@@ -165,7 +165,7 @@ dependencies:
       - nvidia-cusolver-cu12==11.4.5.107
       - nvidia-cusparse-cu12==12.1.0.106
       - nvidia-nccl-cu12==2.21.5
-      - nvidia-nvjitlink-cu12==12.9.86
+      - nvidia-nvjitlink-cu12==12.1.105
       - nvidia-nvtx-cu12==12.1.105
       - omegaconf==2.1.1
       - opencv-python-headless==4.7.0.72
