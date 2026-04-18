@@ -20,3 +20,8 @@ logs/
 
 temp_result_scratch.md
 tuning_results_*.csv
+
+reproduction_logs
+reproduction_runs
+
+*.log
