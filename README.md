@@ -1,4 +1,4 @@
-# Code base for NIPS 2025 Poster Paper Efficient Utility-Preserving Machine Unlearning with Implicit Gradient Surgery (EUPMU)
+# Code base for NeurIPS 2025 Poster Paper Efficient Utility-Preserving Machine Unlearning with Implicit Gradient Surgery (EUPMU)
 
 Paper link: [https://arxiv.org/abs/2510.22124](https://arxiv.org/abs/2510.22124)
 
