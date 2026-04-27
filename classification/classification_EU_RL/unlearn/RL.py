@@ -22,13 +22,13 @@ def RL(data_loaders, model, criterion, optimizer, epoch, args, mask=None, device
     if True:
         if  args.dataset == "cifar10" or args.dataset == "cifar100" or args.dataset == "TinyImagenet":
             try:
-                forget_dataset.targets = np.random.randint(0, args.num_classes, forget_dataset.targets.shape)
+                forget_dataset.targets = (forget_dataset.targets + np.random.randint(1, args.num_classes, forget_dataset.targets.shape)) % args.num_classes
             except:
                 print(forget_dataset.dataset.targets[:10])
-                forget_dataset.dataset.targets = np.random.randint(0, args.num_classes, len(forget_dataset.dataset.targets))
+                forget_dataset.dataset.targets = (forget_dataset.dataset.targets + np.random.randint(1, args.num_classes, forget_dataset.dataset.targets.shape)) % args.num_classes
                 print(forget_dataset.dataset.targets[:10])
         else:
-            forget_dataset.labels = np.random.randint(0, args.num_classes, forget_dataset.labels.shape)
+            forget_dataset.labels = (forget_dataset.labels + np.random.randint(1, args.num_classes, forget_dataset.labels.shape)) % args.num_classes
 
         retain_dataset = retain_loader.dataset
 
